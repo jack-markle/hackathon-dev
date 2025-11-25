@@ -1,0 +1,82 @@
+TEAM ? INITIAL HACKATHON PLANNING - 11/24/2025
+
+- Orchestrator agent
+    - Agent that determines where to route a user's request
+    - [Maybe] Should we add a tool in this agent for calculating base ride price? (Based on distance/duration of ride)
+    - [Maybe] Should we add a "get_reasoning" tool here that summarizes other agent's responses to craft a overall reasoning behind the pricing decision?
+    - Has a tool for calling each of the below agents
+
+- Agent 1: Environmental Determinator Agent (based on environment)
+    - Agent that looks at overall resource availability
+    - Natural disasters, road closures, gas shortage, etc. Anything that limits what we have available.
+    - Analyze the data and wait for threshold
+    - Send out an n8n email notifying user when threshold has been reached
+    - Tools:
+        - Get weather
+        - Get traffic conditions
+        - Get road closures
+        - Get location category
+
+Agent 2: Loyalty Agent (calculates discount based on loyalty)
+    - Agent that determines the overall impact that customer loyalty will have on the price, and determines any discount the customer will have
+    - Tools:
+        - Get customer loyalty
+        - Apply discount
+        - Get number of past rides for customer
+        - Get customer "rider" rating
+        - Get driver "driver" rating
+
+Agent 3: Supply and Demand Determinator Agent
+    - Agent that determines the overall impact that supply and demand will have on the price
+    - Tools:
+        - Get available riders, get available drivers
+        - Get time of day/day of week
+        - Get holidays
+
+Agent 4: Historical Data Determinator
+    - Agent that determines price adjustment needed based on historical data
+    - Average price accepted in the last 30 min
+    - Based on similar trips in the same area
+    - Tools:
+        - Get average historical price
+
+Backend:
+- Use python FastAPI
+- Endpoints:
+    - /chat
+        - Holds the main chat interface, default user landing after login
+    - /reasoning
+        - Holds the reasoning logic for all pricing decision
+    - More endpoints as needed ...
+
+Frontend:
+    - Basic chat interface on main page
+    - Detailed "reasoning output" on all pricing responses
+        - Reasoning output should be self-contained in a little box separate from main chat, but still visible to user
+    - 
+
+LangChain:
+- Checkpointer
+    - In memory saver to save all chat input/output context for a user's chat session
+
+
+Tech Stack (non all-inclusive):
+- MongoDB
+- ChromaDB
+- FastAPI (backend)
+- Next.js (frontend)
+- LangChain (ai agents)
+- n8n (workflow automation as needed)
+
+Strategic Guardrails
+    - In case of emergency, don't apply markup on pricing
+
+Customer Loyalty
+    - If a user is "loyal", surge price not as drastic
+
+Historical Data
+    - Mock up data in a way that can be useful during a scripted demo
+
+
+[REQUEST FOR AI]:
+    - Give me a list of example chat prompts to use in our application that will exercise the system functionality.
