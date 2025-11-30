@@ -7,11 +7,12 @@
 ### 3.1 Outcomes
 
 - Orchestrator module that:
-  - Invokes environmental, loyalty, supply/demand, and historical logic (conceptual “agents”).
+  - Invokes environmental, loyalty, supply/demand, historical, and corporate pressure logic (conceptual “agents” / tools).
   - Combines results into final adjustment and goodness.
   - Calls a LangChain chain to generate natural-language reasoning.
 - `reasoning` field in `RecommendationResponse` now contains LLM-generated text based on factors.
 - Agents and chain implementation remain **simple and deterministic** for the demo.
+- Corporate pressure (revenue goals/strategy) is considered as a soft influence, while market physics and ethical guardrails remain non-negotiable.
 
 ---
 
@@ -80,6 +81,7 @@ Agents can be lightweight functions with clear single responsibilities, backed b
 - `loyalty_agent.py`
 - `supply_demand_agent.py`
 - `historical_agent.py`
+- `corporate_pressure_agent.py` (Corporate Pressure Determinator tool)
 
 Example pattern:
 
@@ -113,11 +115,13 @@ def compute_all_factors(req: RecommendationRequest) -> Dict[str, Any]:
       "supply_demand": {"factor": 0.10, "summary": "..."},
       "loyalty": {"factor": -0.05, "summary": "..."},
       "historical": {"factor": 0.0, "summary": "..."},
+      "corporate_pressure": {"factor": 0.03, "summary": "..."},
       "summaries": {
         "environment": "...",
         "supply_demand": "...",
         "loyalty": "...",
-        "historical": "..."
+        "historical": "...",
+        "corporate_pressure": "..."
       }
     }
     """
@@ -128,7 +132,7 @@ def compute_all_factors(req: RecommendationRequest) -> Dict[str, Any]:
 
 ### 3.4 LangChain Explanation Chain
 
-Use a single chain that accepts request + factors and returns **explanation text only**.
+Use a single chain that accepts request + factors (including corporate pressure) and returns **explanation text only**.
 
 ```python
 # orchestration/chains/pricing_explanation_chain.py
@@ -157,7 +161,7 @@ Guidelines:
 
 - **Deterministic-ish**: Use concise, structured prompts to keep explanations stable across runs.
 - **BA-friendly tone**: Avoid overly technical phrasing; emphasize trade-offs and fairness.
-- **Traceability**: Ensure the prompt references each factor by name (environment, supply/demand, loyalty, historical).
+- **Traceability**: Ensure the prompt references each factor by name (environment, supply/demand, loyalty, historical, corporate pressure) and makes clear that corporate pressure cannot override hard guardrails.
 
 ---
 
@@ -165,10 +169,10 @@ Guidelines:
 
 Ensure the explanation references the **same trade-offs** the `goodness` metric encodes:
 
-- If goodness is low because adjustment is aggressive:
-  - Explanation should mention risk or fairness concerns.
+- If goodness is low because adjustment is aggressive or because corporate pressure is pushing against guardrails:
+  - Explanation should mention risk, fairness concerns, and any tension between corporate goals and constraints.
 - If goodness is high:
-  - Explanation should mention balance between revenue and customer impact.
+  - Explanation should mention balance between revenue, corporate objectives, and customer impact within market/ethics constraints.
 
 Example input to the chain (for reference only):
 
@@ -184,7 +188,8 @@ Example input to the chain (for reference only):
     "environment": "Road closure adds moderate travel time (+5%).",
     "supply_demand": "High demand vs limited drivers (+10%).",
     "loyalty": "Gold segment softens surge (-5%).",
-    "historical": "Similar trips succeed around 1.05x."
+    "historical": "Similar trips succeed around 1.05x.",
+    "corporate_pressure": "Corporate goal to grow revenue by 15% encourages slightly higher pricing but cannot exceed guardrail caps."
   },
   "adjustment": {
     "recommended_adjustment": 0.1,

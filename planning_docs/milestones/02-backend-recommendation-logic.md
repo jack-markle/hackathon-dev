@@ -7,11 +7,12 @@
 ### 2.1 Outcomes
 
 - **`POST /api/v1/recommendation`** returns a **non-hardcoded**, but still hackathon-simple recommendation.
-- All four conceptual factors are represented in code:
+- All five conceptual influences are represented in code:
   - `environment_factor`
   - `supply_demand_factor`
   - `loyalty_factor`
   - `historical_factor`
+  - `corporate_pressure_factor` (derived from revenue goal/strategy inputs)
 - Factors are combinable into:
   - `recommended_adjustment` (e.g., `0.10` for +10%)
   - `goodness` score between `0.0` and `1.0`
@@ -50,15 +51,27 @@ def compute_historical_factor(req: RecommendationRequest) -> float:
     raise NotImplementedError
 
 
+def compute_corporate_pressure_factor(req: RecommendationRequest) -> float:
+    """
+    Represent the influence of corporate revenue goals/strategy on pricing.
+    This is a soft factor that can nudge prices within, but never override,
+    market physics and ethical guardrails.
+    """
+    raise NotImplementedError
+
+
 def combine_factors(
     env: float,
     supply_demand: float,
     loyalty: float,
     historical: float,
+    corporate_pressure: float,
 ) -> Dict[str, float]:
     """
     Combine individual factors into a single recommended adjustment and
-    a 'goodness' score.
+    a 'goodness' score, treating environment, supply/demand, and ethical
+    constraints as non-negotiable, with corporate pressure as a softer
+    influence.
     """
     raise NotImplementedError
 
@@ -84,6 +97,9 @@ Codify the strategic guardrails noted in `notes.txt` and the proposal:
   - Optionally cap the adjustment at a small positive number or even `0.0`.
 - **Loyal customers**:
   - Apply **softer surge** for loyal segments.
+- **Corporate pressure**:
+  - Revenue targets can **never override** emergency/ethics guardrails or clearly unreasonable surge levels.
+  - If corporate pressure suggests higher prices than guardrails allow, the guardrails win and the tension is reflected in the goodness score and reasoning.
 
 Example pseudo-logic (to be implemented with real condition checks):
 
@@ -122,7 +138,9 @@ Use this example to validate the backend behavior.
   "scenario": "road_closure",
   "time": "2025-11-27T18:00:00Z",
   "loyalty_segment": "gold",
-  "notes": "evening commute, partial freeway closure"
+  "notes": "evening commute, partial freeway closure",
+  "corporate_revenue_goal": 0.15,
+  "corporate_strategy_notes": "End-of-quarter revenue push for airport corridor."
 }
 ```
 
@@ -136,7 +154,8 @@ Use this example to validate the backend behavior.
     "environment": "Road closure near airport adds moderate travel time (+5%).",
     "supply_demand": "Driver supply tight vs ride requests at 6pm (+10%).",
     "loyalty": "Gold segment gets softened surge (-5%).",
-    "historical": "Similar airport evening trips succeed around 1.05x."
+    "historical": "Similar airport evening trips succeed around 1.05x.",
+    "corporate_pressure": "Corporate target of +15% revenue nudges price upward within allowed guardrails."
   },
   "reasoning": "Explanation to be filled by LangChain in Milestone 3."
 }

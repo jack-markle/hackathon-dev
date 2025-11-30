@@ -94,6 +94,19 @@ Best practices:
 - Provide **sensible defaults** (e.g., “Downtown” and “Normal day”) so a demo can start with a single click.
 - Add small helper text under each field to remind the user of intent.
 
+#### 4.3.1 Corporate Pressure Inputs
+
+To support the Corporate Pressure Determinator tool, add a clearly labeled section to the form, for example:
+
+- **Corporate revenue goal** (numeric input):
+  - Interpreted as a target uplift or index (e.g., “15% additional revenue for this scenario”).
+  - Sent to the backend as `corporate_revenue_goal` (number or `null`).
+- **Corporate strategy notes** (textarea):
+  - Free-text description of the current corporate strategy or constraints.
+  - Sent to the backend as `corporate_strategy_notes` (string or `null`).
+
+These fields should be visually grouped (e.g., under a “Corporate Strategy” heading) so analysts understand they are business-direction inputs, not market/environmental data.
+
 Example snippet for the zone and scenario selectors:
 
 ```tsx
@@ -137,6 +150,10 @@ async function handleSubmit(event: React.FormEvent) {
         time: new Date().toISOString(),
         loyalty_segment: "gold", // could later be another field
         notes,
+        // Corporate pressure fields (optional)
+        corporate_revenue_goal: 0.15,
+        corporate_strategy_notes:
+          "End-of-quarter revenue push; stay within ethical guardrails.",
       }),
     });
 

@@ -6,7 +6,7 @@
 
 ### 1.1 Outcomes
 
-- **Shared architecture**: Everyone understands the orchestrator + conceptual agents + UI + n8n flow.
+- **Shared architecture**: Everyone understands the orchestrator + conceptual agents + corporate pressure tool + UI + n8n flow.
 - **Repo structure ready**: Backend (FastAPI), frontend (Next.js), orchestration, and infra folders exist.
 - **Environments**: Basic Python and Node environments set up and reproducible (e.g., via `requirements.txt` and `package.json`).
 - **Run scripts**: Simple commands exist to run backend and frontend locally (even if they only serve “Hello, world” or placeholder responses).
@@ -47,6 +47,7 @@ ai-pricing-advisor/
       loyalty_agent.py
       supply_demand_agent.py
       historical_agent.py
+      corporate_pressure_agent.py   # Interprets corporate revenue goals/strategy
 
   infra/
     n8n/
@@ -114,6 +115,9 @@ class RecommendationRequest(BaseModel):
     time: str
     loyalty_segment: str | None = None
     notes: str | None = None
+    # Corporate pressure / strategy inputs:
+    corporate_revenue_goal: float | None = None  # e.g., target uplift percentage or index
+    corporate_strategy_notes: str | None = None  # free-text description of current strategy
 
 
 class RecommendationResponse(BaseModel):
@@ -214,7 +218,7 @@ def build_pricing_explanation_chain() -> Any:
 
 - **Architecture agreed** and documented (mirrors the hackathon proposal: console → orchestrator → conceptual agents → n8n).
 - **Repo structure created** with backend, frontend, orchestration, and infra folders.
-- **Key skeleton files exist**: FastAPI `main.py`, `recommendation.py`, Pydantic models, basic Next.js page, agent and chain skeletons.
+- **Key skeleton files exist**: FastAPI `main.py`, `recommendation.py`, Pydantic models (including corporate pressure fields), basic Next.js page, agent and chain skeletons.
 - **Teams can run**:
 
 ```bash
@@ -228,5 +232,30 @@ npm run dev
 ```
 
 - No production logic is implemented yet; all meaningful computation is deferred to later milestones.
+
+---
+
+### 1.7 Developer Lanes (4-Day Hackathon, 5 Developers)
+
+To maximize parallel work from Day 1, we split responsibility into five lanes that map to later milestones and dedicated user-story files (`dev_1_stories.md`–`dev_5_stories.md`):
+
+- **Dev 1 – Backend Core Pricing Logic**
+  - Owns `backend/app/services/recommendation_service.py` and core factor math.
+  - Focuses on environment, supply/demand, loyalty, historical, and corporate pressure numeric factors and guardrails.
+- **Dev 2 – Orchestrator, Agents, and LangChain**
+  - Owns `orchestration/orchestrator.py`, `orchestration/agents/*`, and `orchestration/chains/pricing_explanation_chain.py`.
+  - Integrates the Corporate Pressure Determinator while respecting market physics and ethical guardrails.
+- **Dev 3 – Next.js Pricing Analyst Console**
+  - Owns `frontend/app/page.tsx` and related UI components/styles.
+  - Implements all form inputs (including corporate revenue goal/strategy) and result display.
+- **Dev 4 – n8n & Integrations**
+  - Owns `infra/n8n/*` and `backend/app/integrations/n8n_notifier.py`.
+  - Ensures alerts fire correctly without blocking user requests.
+- **Dev 5 – Data, Scenarios, Testing & Demo**
+  - Curates mock data, scripted scenarios (including corporate pressure examples), and light tests.
+  - Helps refine prompts, UX polish, and presentation artifacts.
+
+Each developer’s detailed user stories and any shared technical contracts they rely on are captured in the `planning_docs/user_stories/dev_<x>_stories.md` files to reduce cross-branch conflicts.
+
 
 

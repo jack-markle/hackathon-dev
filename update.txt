@@ -1,0 +1,18 @@
+ USER STORY BREAKDOWN UPDATE:
+    - There will be a total of 5 developers implementing this project.
+    - Break down the user stories to be split up so that 5 people can work on this project in parallel.
+    - Edit the existing documents in ./planning_docs/milestones to reflect this update
+    - Name the new (or existing) user story markdown files with prefix: "dev_<x>_stories" 
+        - "x" being a number 1-5 to differentiate between developers.
+    - Use a logical breakdown of implementation/development work so that all developers can work in paralell as much as possible.
+        - Any shared technical information should be listed with the user story to avoid and merge conflicts down the line.
+    - Keep in mind we will have 4 days to code the project.
+
+
+ ADDITIONAL PRICING STRATEGY UPDATE:
+    - "Corporate Pressure" determinator tool for the orchestrator agent:
+        - A tool that allows the company's revenue goal to be input in the overall pricing strategy.
+        - User would be able to input data related to the revenue goal or strategy.
+        - The tool then feeds that data into the orchestrator agent to be considered alongside other determinating factors.
+    - The orchestrator agent should still treat market physics (supply/demand, environment) and ethics (disaster protocol) as a non-negotiable constraints.
+    - Ensure to update all documents in the milestones folder appropriately.

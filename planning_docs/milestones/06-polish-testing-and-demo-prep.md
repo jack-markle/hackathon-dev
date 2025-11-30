@@ -52,12 +52,13 @@ Iterate on the LangChain prompt so that explanations:
   - Revenue considerations.
   - Fairness and loyalty impact.
   - Any guardrails applied (e.g., “Because this is an emergency, we capped the price.”).
+  - How corporate revenue goals/strategy were considered but constrained by market physics and ethics where necessary.
 
 Prompt guidelines:
 
 - System message should define:
   - Role: “You are a pricing advisor for a ride-hailing company.”
-  - Objectives: “Balance profit, fairness, and loyalty.”
+  - Objectives: “Balance profit, fairness, loyalty, and corporate revenue goals without violating market or ethical constraints.”
 - Human message should inject:
   - Scenario description (zone, time, scenario).
   - Summarized factors.

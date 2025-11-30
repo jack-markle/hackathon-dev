@@ -12,7 +12,7 @@
   - Sends a simple alert (e.g., email, Slack-style message, or log).
 - FastAPI backend posts to the n8n webhook whenever:
   - `goodness < threshold` (e.g., `< 0.7`), or
-  - Certain flags are set (e.g., emergency scenario, high surge).
+  - Certain flags are set (e.g., emergency scenario, high surge, tension between corporate pressure and guardrails).
 
 ---
 
@@ -24,11 +24,12 @@ At a high level, the workflow should look like:
   - `zone`
   - `recommended_adjustment`
   - `goodness`
-  - optional `flags` (e.g., `["emergency", "high_surge"]`)
+  - optional `flags` (e.g., `["emergency", "high_surge", "corporate_overruled_by_guardrails"]`)
 - **IF node** – checks conditions:
   - `goodness < 0.7`
   - OR `"emergency" in flags`
   - OR `"high_surge" in flags`
+  - OR `"corporate_overruled_by_guardrails" in flags`
 - **Action node** – for alerting:
   - Email node, Slack node, or simply a log/HTTP call for the demo.
 
@@ -39,9 +40,9 @@ Example payload expected by the webhook:
   "zone": "airport_corridor",
   "recommended_adjustment": 0.2,
   "goodness": 0.62,
-  "flags": ["high_surge"],
+  "flags": ["high_surge", "corporate_overruled_by_guardrails"],
   "scenario": "storm",
-  "notes": "Storm tonight, limited drivers near airport."
+  "notes": "Storm tonight, limited drivers near airport. Corporate requested +30% but guardrails capped at +20%."
 }
 ```
 
