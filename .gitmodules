@@ -1,0 +1,3 @@
+[submodule "hackathon-planning"]
+	path = hackathon-planning
+	url = https://github.com/jack-markle/hackathon-planning.git
