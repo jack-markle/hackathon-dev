@@ -1,3 +1,7 @@
+#Cursor
+.cursor/rules/
+
+
 # Python
 __pycache__/
 *.py[cod]
