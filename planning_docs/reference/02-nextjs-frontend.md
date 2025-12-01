@@ -49,7 +49,7 @@ We can either:
 "use client";
 
 export default function PricingAnalystConsolePage() {
-  // local state, handlers, and JSX
+  // local state (including corporate strategy inputs), handlers, and JSX
 }
 ```
 
@@ -74,7 +74,7 @@ async function fetchRecommendation(payload: any) {
 ### 4. UI / UX Best Practices for This Project
 
 - Clear sections:
-  - **Scenario** – form inputs.
+  - **Scenario** – form inputs (Zone, Scenario, Notes, Corporate Strategy).
   - **Recommendation** – adjustment summary.
   - **Goodness Score** – numeric + color-coded status.
   - **AI Reasoning** – explanation panel.
@@ -93,7 +93,7 @@ Example `.cursor/rules/nextjs.mdc` content:
 ```text
 When editing Next.js frontend code:
 - Use the App Router (files under frontend/app) and functional components.
-- Treat the root page as the Pricing Analyst Console with clear sections: Scenario, Recommendation, Goodness Score, AI Reasoning.
+- Treat the root page as the Pricing Analyst Console with clear sections: Scenario, Corporate Strategy, Recommendation, Goodness Score, AI Reasoning.
 - Keep API interaction in thin helpers using fetch and preserve the /recommendation payload/response contract.
 - Handle loading, error, and empty states explicitly, without adding complex state management libraries.
 ```

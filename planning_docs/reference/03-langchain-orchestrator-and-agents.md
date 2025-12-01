@@ -28,6 +28,7 @@ orchestration/
     loyalty_agent.py
     supply_demand_agent.py
     historical_agent.py
+    corporate_pressure_agent.py
   chains/
     pricing_explanation_chain.py      # LangChain prompt + wiring
 ```
@@ -84,10 +85,10 @@ def build_pricing_explanation_chain(llm: BaseLanguageModel) -> Runnable:
 ```
 
 - Prompt guidelines:
-  - **System**: set role (“pricing advisor for ride-hailing”) and objectives (balance profit, fairness, loyalty).
+  - **System**: set role (“pricing advisor for ride-hailing”) and objectives (balance profit, fairness, loyalty, corporate goals).
   - **Human**: include:
     - Zone, scenario, time, loyalty segment.
-    - Factor summaries by name.
+    - Factor summaries by name (Environment, Supply/Demand, Loyalty, Historical, Corporate Pressure).
     - Recommended adjustment and goodness.
     - Instructions: “Explain in 3–6 sentences, in business language, referencing each factor.”
 
@@ -119,7 +120,7 @@ def orchestrate_pricing_recommendation(
 
 - Keep agents **simple and explainable**:
   - Use small lookup tables or rule-of-thumb heuristics.
-- Make prompts **explicitly reference** the four conceptual agents and the goodness score.
+- Make prompts **explicitly reference** the five conceptual agents (including corporate pressure) and the goodness score.
 - Avoid over-engineering:
   - One orchestrator, one explanation chain is sufficient for the hackathon.
 - Document any non-obvious heuristics in comments to keep reasoning auditable.
@@ -134,8 +135,8 @@ Example `.cursor/rules/langchain.mdc` content:
 When editing orchestration or LangChain code:
 - Keep one primary orchestrator function that coordinates agents and the explanation chain.
 - Implement agents as simple, deterministic functions that return {factor, summary}.
-- Design the LangChain prompt to reference environment, supply/demand, loyalty, historical factors, and the goodness score explicitly.
-- Avoid adding new chains or agents unless they clearly support the four conceptual dimensions already defined.
+- Design the LangChain prompt to reference environment, supply/demand, loyalty, historical, corporate pressure factors, and the goodness score explicitly.
+- Avoid adding new chains or agents unless they clearly support the five conceptual dimensions already defined.
 ```
 
 Use this rule when prompting in `orchestration/` or related backend files.

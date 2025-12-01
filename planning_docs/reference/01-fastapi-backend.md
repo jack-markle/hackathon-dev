@@ -25,7 +25,7 @@ backend/
       v1/
         recommendation.py  # Versioned API routes
     models/
-      recommendation.py  # Pydantic schemas
+      recommendation.py  # Pydantic schemas (incl. corporate pressure fields)
     services/
       recommendation_service.py  # Core pricing logic (no HTTP)
     integrations/
@@ -63,6 +63,7 @@ app = create_app()
 - Always define **request/response models** (no plain dicts) so:
   - Frontend and docs have a stable contract.
   - Validation and OpenAPI docs come for free.
+  - New fields like `corporate_revenue_goal` and `corporate_strategy_notes` are strictly typed.
 - Keep **async** endpoints (and any outbound IO like n8n calls) truly non-blocking.
 
 ---
@@ -87,7 +88,7 @@ You can drop a rule like this into `.cursor/rules/fastapi.mdc`:
 When editing backend FastAPI code:
 - Keep routes thin and delegate logic to services in app/services.
 - Always use Pydantic models from app/models for request/response bodies.
-- Preserve the /api/v1/recommendation contract (fields and types) unless explicitly asked to change it.
+- Preserve the /api/v1/recommendation contract (fields and types, including corporate inputs) unless explicitly asked to change it.
 - Prefer async endpoints and non-blocking outbound calls (e.g., to n8n).
 ```
 

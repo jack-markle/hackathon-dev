@@ -8,7 +8,7 @@ This document describes how we use **n8n** as a workflow engine for logging and 
 
 - Receives **webhook events** from FastAPI when:
   - Goodness is below a threshold.
-  - A scenario is flagged as high-risk (e.g., emergency, high surge).
+  - A scenario is flagged as high-risk (e.g., emergency, high surge, corporate pressure overruled by guardrails).
 - Evaluates simple conditions and:
   - Logs the event.
   - Sends an alert (e.g., email, Slack-like message, or another webhook).
@@ -29,14 +29,14 @@ In n8n, we expect a workflow roughly like:
   "zone": "airport_corridor",
   "recommended_adjustment": 0.2,
   "goodness": 0.62,
-  "flags": ["high_surge"],
+  "flags": ["high_surge", "corporate_overruled_by_guardrails"],
   "scenario": "storm",
   "notes": "Storm tonight, limited drivers near airport."
 }
 ```
 
 2. **IF Node**:
-   - Condition: `goodness < 0.7` **OR** `flags` contains `"emergency"` or `"high_surge"`.
+   - Condition: `goodness < 0.7` **OR** `flags` contains `"emergency"`, `"high_surge"`, or `"corporate_overruled_by_guardrails"`.
 
 3. **Action Node**:
    - Email, Slack, or other notification:
@@ -91,7 +91,7 @@ Example `.cursor/rules/n8n.mdc` content:
 ```text
 When editing n8n integration or alerting code:
 - Keep the main pricing API path user-focused and non-blocking; n8n failures must not break recommendations.
-- Send structured JSON payloads to the n8n webhook including zone, recommended_adjustment, goodness, flags, scenario, and notes.
+- Send structured JSON payloads to the n8n webhook including zone, recommended_adjustment, goodness, flags (incl. corporate_overruled), scenario, and notes.
 - Reserve business-critical pricing rules for the backend; use n8n primarily for logging and notifications.
 - Read the n8n webhook URL from configuration (e.g., N8N_WEBHOOK_URL) rather than hard-coding it.
 ```
