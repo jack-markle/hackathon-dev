@@ -1,0 +1,271 @@
+{
+  "_comment": "Canonical demo scenarios for hackathon presentation. Each scenario includes story context, input payload, expected outputs, and demo notes.",
+  "_description": "These scenarios are designed to showcase different aspects of the dynamic pricing system: corporate pressure, guardrails, loyalty, and market dynamics.",
+  
+  "scenarios": [
+    {
+      "scenario_id": "airport_road_closure_corporate_push",
+      "scenario_name": "Airport Corridor Road Closure with Corporate Revenue Push",
+      "order": 1,
+      "story_context": "It's 6 PM on a weekday - peak evening commute time. A major freeway closure near the airport corridor has created significant traffic delays. Meanwhile, corporate leadership has set an aggressive Q4 revenue target of 20% increase. The system must balance market realities (road closure + peak hours) with corporate pressure, while respecting loyalty discounts for a Gold member customer.",
+      "input_payload": {
+        "zone": "airport_corridor",
+        "scenario": "road_closure",
+        "time": "2025-12-01T18:00:00Z",
+        "loyalty_segment": "gold",
+        "notes": "Evening commute, partial freeway closure causing 30-minute delays",
+        "corporate_revenue_goal": 0.20,
+        "corporate_strategy_notes": "Q4 end-of-quarter revenue push - aggressive targets for airport corridor"
+      },
+      "expected_output_ranges": {
+        "recommended_adjustment_pct": {
+          "min": 0.10,
+          "max": 0.18,
+          "description": "Expected adjustment between +10% and +18% after loyalty discount"
+        },
+        "goodness": {
+          "min": 0.70,
+          "max": 0.85,
+          "description": "Moderate to good balance - market supports pricing but corporate pressure creates some tension"
+        }
+      },
+      "expected_factors": {
+        "environment": "Road closure adds moderate travel time and complexity (+5%)",
+        "supply_demand": "Peak commute hours with high demand (+15%)",
+        "loyalty": "Gold member receives loyalty discount and softened surge (-5%)",
+        "historical": "Historical data shows airport trips typically succeed at 1.05x base price",
+        "corporate_pressure": "High corporate revenue target (20%) encourages pricing increase, but capped at +8% to maintain market competitiveness"
+      },
+      "example_explanation": "Based on current conditions in the airport corridor, we recommend a +12% price adjustment. The evening commute peak (6 PM) combined with the road closure creates strong market justification for surge pricing. Your Gold loyalty status provides a -5% discount, softening the impact. Corporate revenue goals of 20% are factored in but capped at +8% influence to maintain competitive positioning. Historical patterns show similar airport evening trips succeed at this pricing level. The recommendation balances revenue objectives with customer fairness.",
+      "demo_notes": {
+        "when_to_use": "Use this scenario FIRST to demonstrate the core system - shows all factors working together",
+        "what_to_highlight": [
+          "Point out the road closure factor (+5%)",
+          "Emphasize peak hour demand (+15%)",
+          "Show how Gold loyalty discount (-5%) softens the surge",
+          "Explain corporate pressure cap (20% goal → 8% actual influence)",
+          "Note the goodness score reflects balance between revenue and fairness"
+        ],
+        "key_talking_points": [
+          "This scenario shows how the system balances multiple competing factors",
+          "Corporate pressure is present but doesn't override market physics",
+          "Loyal customers get meaningful discounts even during surge periods",
+          "The system respects guardrails - no excessive pricing despite high corporate goals"
+        ],
+        "ui_actions": [
+          "Select 'airport_corridor' from zone dropdown",
+          "Select 'road_closure' from scenario dropdown",
+          "Set time to 6:00 PM",
+          "Select 'gold' from loyalty segment",
+          "Enter corporate revenue goal: 20%",
+          "Add strategy notes: 'Q4 end-of-quarter revenue push'",
+          "Click 'Get Recommendation'",
+          "Point out each factor in the breakdown",
+          "Highlight the final adjustment percentage"
+        ]
+      }
+    },
+    
+    {
+      "scenario_id": "downtown_storm_no_pressure",
+      "scenario_name": "Downtown Storm with Driver Shortage - No Corporate Pressure",
+      "order": 2,
+      "story_context": "A severe storm hits downtown during morning rush hour (8 AM). Driver availability is low due to weather conditions, creating a supply-demand imbalance. However, there's NO corporate revenue pressure - the company is prioritizing customer trust and service availability during the disruption. A Silver member customer needs a ride.",
+      "input_payload": {
+        "zone": "downtown",
+        "scenario": "storm",
+        "time": "2025-12-02T08:00:00Z",
+        "loyalty_segment": "silver",
+        "notes": "Heavy rain and wind, reduced driver availability, morning commute",
+        "corporate_revenue_goal": null,
+        "corporate_strategy_notes": null
+      },
+      "expected_output_ranges": {
+        "recommended_adjustment_pct": {
+          "min": 0.12,
+          "max": 0.20,
+          "description": "Storm + peak hours justify surge, but no corporate pressure to push higher"
+        },
+        "goodness": {
+          "min": 0.75,
+          "max": 0.90,
+          "description": "High goodness - market-justified pricing without corporate tension"
+        }
+      },
+      "expected_factors": {
+        "environment": "Weather conditions (storm) increase difficulty and demand (+8%)",
+        "supply_demand": "Peak commute hours with high demand (+15%)",
+        "loyalty": "Silver member receives moderate loyalty benefit (-3%)",
+        "historical": "Historical downtown patterns suggest modest +3% adjustment",
+        "corporate_pressure": "No specific corporate revenue target set (no pressure adjustment)"
+      },
+      "example_explanation": "The downtown area is experiencing a severe storm during morning rush hour, creating challenging conditions and reduced driver availability. We recommend a +15% price adjustment, which is fully justified by market conditions: storm conditions (+8%) and peak hour demand (+15%). Your Silver loyalty status provides a -3% discount. Notably, there's no corporate revenue pressure in this scenario - the company is prioritizing service availability and customer trust during the disruption. Historical patterns support this pricing level. The high goodness score (0.82) reflects the alignment between market reality and ethical pricing.",
+      "demo_notes": {
+        "when_to_use": "Use this scenario SECOND to contrast with corporate pressure - shows trust-first approach",
+        "what_to_highlight": [
+          "Compare to previous scenario - note absence of corporate pressure",
+          "Show how market factors alone drive the recommendation",
+          "Point out higher goodness score (trust-first approach)",
+          "Emphasize that ethical pricing doesn't require corporate pressure to be removed"
+        ],
+        "key_talking_points": [
+          "This demonstrates the system works well even without corporate pressure",
+          "Market-justified pricing maintains customer trust",
+          "The goodness score is higher when there's no tension between revenue goals and market reality",
+          "Shows the system can operate in 'trust-first' mode"
+        ],
+        "ui_actions": [
+          "Select 'downtown' from zone dropdown",
+          "Select 'storm' from scenario dropdown",
+          "Set time to 8:00 AM",
+          "Select 'silver' from loyalty segment",
+          "Leave corporate revenue goal EMPTY (important!)",
+          "Click 'Get Recommendation'",
+          "Compare goodness score to previous scenario",
+          "Note the cleaner factor breakdown without corporate pressure"
+        ]
+      }
+    },
+    
+    {
+      "scenario_id": "holiday_airport_moderate_goal",
+      "scenario_name": "Holiday Travel at Airport with Moderate Corporate Goal",
+      "order": 3,
+      "story_context": "It's December 25th - Christmas Day. The airport is experiencing holiday travel surge with high demand. Corporate has set a moderate revenue goal of 12% (balanced growth strategy), aligned with expected holiday demand patterns. A Platinum member customer needs transportation.",
+      "input_payload": {
+        "zone": "airport_corridor",
+        "scenario": "holiday",
+        "time": "2025-12-25T16:00:00Z",
+        "loyalty_segment": "platinum",
+        "notes": "Christmas Day travel, high demand expected, premium customer",
+        "corporate_revenue_goal": 0.12,
+        "corporate_strategy_notes": "Balanced growth strategy - holiday revenue goals aligned with market conditions"
+      },
+      "expected_output_ranges": {
+        "recommended_adjustment_pct": {
+          "min": 0.08,
+          "max": 0.15,
+          "description": "Holiday surge moderated by Platinum loyalty discount and balanced corporate goal"
+        },
+        "goodness": {
+          "min": 0.80,
+          "max": 0.95,
+          "description": "High goodness - corporate goals align with market reality, loyalty rewarded"
+        }
+      },
+      "expected_factors": {
+        "environment": "Holiday period with increased demand (+10%)",
+        "supply_demand": "Afternoon holiday travel - moderate demand (+5%)",
+        "loyalty": "Platinum member receives premium loyalty discount (-10%)",
+        "historical": "Historical airport demand during events suggests +8% pricing",
+        "corporate_pressure": "Moderate corporate revenue goal (12%) nudges pricing upward (+4.8% after weighting)"
+      },
+      "example_explanation": "Christmas Day at the airport brings expected holiday travel demand. We recommend a +10% price adjustment, which balances holiday surge patterns with your Platinum loyalty status (providing a -10% discount). Corporate revenue goals of 12% are moderate and well-aligned with holiday market conditions, creating a harmonious pricing recommendation. Historical data shows similar holiday periods succeed at this level. The high goodness score (0.87) reflects the excellent alignment between corporate objectives, market reality, and customer loyalty rewards.",
+      "demo_notes": {
+        "when_to_use": "Use this scenario THIRD to show alignment between corporate goals and market reality",
+        "what_to_highlight": [
+          "Show how moderate corporate goals (12%) align with market conditions",
+          "Demonstrate Platinum loyalty discount (-10%) protecting premium customers",
+          "Point out high goodness score when all factors align",
+          "Contrast with first scenario where corporate pressure was more aggressive"
+        ],
+        "key_talking_points": [
+          "This shows the ideal scenario - corporate goals aligned with market reality",
+          "Premium customers (Platinum) are well-protected even during surge periods",
+          "The system rewards alignment between business objectives and market conditions",
+          "High goodness scores indicate sustainable, ethical pricing"
+        ],
+        "ui_actions": [
+          "Select 'airport_corridor' from zone dropdown",
+          "Select 'holiday' from scenario dropdown",
+          "Set time to 4:00 PM (December 25th)",
+          "Select 'platinum' from loyalty segment",
+          "Enter corporate revenue goal: 12%",
+          "Add strategy notes: 'Balanced growth strategy'",
+          "Click 'Get Recommendation'",
+          "Emphasize the high goodness score",
+          "Show how loyalty discount protects premium customer"
+        ]
+      }
+    },
+    
+    {
+      "scenario_id": "emergency_guardrail_override",
+      "scenario_name": "Emergency Scenario - Guardrail Override",
+      "order": 4,
+      "story_context": "A natural disaster or public emergency has occurred. Despite high corporate revenue pressure (25% goal), the system MUST apply ethical guardrails and prevent surge pricing. This demonstrates that corporate pressure cannot override emergency protocols.",
+      "input_payload": {
+        "zone": "downtown",
+        "scenario": "emergency",
+        "time": "2025-12-03T14:00:00Z",
+        "loyalty_segment": "standard",
+        "notes": "Public emergency declared, service availability critical",
+        "corporate_revenue_goal": 0.25,
+        "corporate_strategy_notes": "Aggressive revenue push - but should be overridden by emergency guardrails"
+      },
+      "expected_output_ranges": {
+        "recommended_adjustment_pct": {
+          "min": 0.0,
+          "max": 0.0,
+          "description": "MUST be 0% - emergency guardrail overrides all other factors"
+        },
+        "goodness": {
+          "min": 0.85,
+          "max": 1.0,
+          "description": "High goodness - ethical pricing during emergencies is correct"
+        }
+      },
+      "expected_factors": {
+        "environment": "Emergency situation detected - applying ethical guardrails (no surge)",
+        "supply_demand": "Off-peak hours with balanced supply and demand (no adjustment)",
+        "loyalty": "Standard customer tier (no loyalty adjustment)",
+        "historical": "Historical downtown patterns suggest modest +3% adjustment",
+        "corporate_pressure": "High corporate revenue target (25%) encourages pricing increase, but capped at +8%",
+        "guardrails": "EMERGENCY_GUARDRAIL: Surge pricing blocked due to emergency situation"
+      },
+      "example_explanation": "An emergency situation has been detected in the downtown area. Despite strong market factors and corporate revenue goals of 25%, the system applies ethical guardrails and recommends 0% price adjustment. Emergency protocols override all other considerations - including corporate pressure - to ensure service availability during critical situations. The high goodness score (0.90) reflects that ethical pricing during emergencies is the correct approach, even when it conflicts with revenue objectives.",
+      "demo_notes": {
+        "when_to_use": "Use this scenario LAST to demonstrate guardrails and ethical constraints",
+        "what_to_highlight": [
+          "Show that even with 25% corporate goal, adjustment is 0%",
+          "Point out the guardrail flag in factors",
+          "Emphasize that ethics override revenue goals",
+          "Note the high goodness score (ethical pricing is 'good')"
+        ],
+        "key_talking_points": [
+          "This demonstrates the system's ethical guardrails in action",
+          "Corporate pressure CANNOT override emergency protocols",
+          "The system prioritizes service availability during crises",
+          "High goodness score shows ethical pricing is valued"
+        ],
+        "ui_actions": [
+          "Select 'downtown' from zone dropdown",
+          "Select 'emergency' from scenario dropdown",
+          "Set time to 2:00 PM",
+          "Select 'standard' from loyalty segment",
+          "Enter corporate revenue goal: 25% (high pressure)",
+          "Add strategy notes: 'Aggressive revenue push'",
+          "Click 'Get Recommendation'",
+          "Point out 0% adjustment despite high corporate pressure",
+          "Show guardrail message in factors",
+          "Emphasize ethical override"
+        ]
+      }
+    }
+  ],
+  
+  "_demo_flow_recommendation": [
+    "Start with scenario 1 (airport_road_closure_corporate_push) - shows full system",
+    "Follow with scenario 2 (downtown_storm_no_pressure) - contrasts with trust-first",
+    "Show scenario 3 (holiday_airport_moderate_goal) - demonstrates alignment",
+    "End with scenario 4 (emergency_guardrail_override) - highlights ethics"
+  ],
+  
+  "_notes": [
+    "All input payloads match the RecommendationRequest model structure",
+    "Expected ranges are approximate - actual values may vary slightly based on implementation",
+    "Example explanations are templates - Dev-2's LangChain integration will generate natural language",
+    "Demo notes provide guidance for presenters on when and how to use each scenario"
+  ]
+}
+

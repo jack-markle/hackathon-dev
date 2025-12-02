@@ -1,0 +1,115 @@
+{
+  "_comment": "MOCK/DEMO ONLY - NOT PRODUCTION DATA",
+  "_description": "Predefined corporate strategy templates for demo scenarios. Used by corporate pressure agent.",
+  "_usage": "These templates provide realistic corporate revenue goals and strategy notes for testing and demos.",
+  
+  "strategies": {
+    "aggressive_revenue_push": {
+      "_description": "Aggressive revenue maximization strategy - high pressure",
+      "revenue_goal_range": [0.18, 0.25],
+      "typical_goal": 0.20,
+      "strategy_notes": "End-of-quarter revenue push - maximize pricing within market constraints",
+      "use_cases": [
+        "Q4 financial targets",
+        "Investor pressure",
+        "Market share expansion"
+      ],
+      "_goodness_impact": "Lower goodness score expected when market doesn't support high goals"
+    },
+    
+    "trust_first": {
+      "_description": "Customer trust and retention priority - minimal pressure",
+      "revenue_goal_range": [0.0, 0.08],
+      "typical_goal": 0.05,
+      "strategy_notes": "Prioritize customer satisfaction and long-term trust over short-term revenue",
+      "use_cases": [
+        "Brand reputation protection",
+        "Customer retention focus",
+        "Competitive market positioning"
+      ],
+      "_goodness_impact": "Higher goodness score - aligns with ethical pricing"
+    },
+    
+    "balanced_growth": {
+      "_description": "Balanced approach - moderate revenue goals aligned with market",
+      "revenue_goal_range": [0.10, 0.15],
+      "typical_goal": 0.12,
+      "strategy_notes": "Sustainable growth strategy - revenue goals aligned with market conditions",
+      "use_cases": [
+        "Normal operations",
+        "Steady growth periods",
+        "Market-aligned pricing"
+      ],
+      "_goodness_impact": "Moderate to high goodness when market supports the goal"
+    },
+    
+    "q4_end_push": {
+      "_description": "Quarter-end revenue push - moderate to high pressure",
+      "revenue_goal_range": [0.15, 0.22],
+      "typical_goal": 0.18,
+      "strategy_notes": "Q4 financial year-end targets - aggressive but market-aware pricing",
+      "use_cases": [
+        "Quarter-end financial reporting",
+        "Annual target achievement",
+        "Investor expectations"
+      ],
+      "_goodness_impact": "Variable - depends on market conditions and zone"
+    },
+    
+    "crisis_mode": {
+      "_description": "Crisis response - revenue goals suspended, focus on service",
+      "revenue_goal_range": [0.0, 0.0],
+      "typical_goal": 0.0,
+      "strategy_notes": "Crisis management mode - suspend revenue goals, prioritize service availability",
+      "use_cases": [
+        "Natural disasters",
+        "Public emergencies",
+        "Service disruption recovery"
+      ],
+      "_goodness_impact": "High goodness - ethical pricing during crises"
+    },
+    
+    "market_expansion": {
+      "_description": "Market expansion strategy - moderate pressure with growth focus",
+      "revenue_goal_range": [0.12, 0.18],
+      "typical_goal": 0.15,
+      "strategy_notes": "Expanding into new markets - balanced pricing to capture market share",
+      "use_cases": [
+        "New market entry",
+        "Competitive positioning",
+        "Growth initiatives"
+      ],
+      "_goodness_impact": "Moderate goodness - depends on competitive landscape"
+    },
+    
+    "loyalty_reward": {
+      "_description": "Loyalty-focused strategy - lower revenue goals, higher customer value",
+      "revenue_goal_range": [0.05, 0.10],
+      "typical_goal": 0.08,
+      "strategy_notes": "Reward loyal customers with softer pricing - focus on lifetime value",
+      "use_cases": [
+        "Customer retention programs",
+        "Loyalty program promotion",
+        "High-value customer segments"
+      ],
+      "_goodness_impact": "High goodness - aligns with loyalty discounts"
+    }
+  },
+  
+  "strategy_selection_guidance": {
+    "_description": "When to use each strategy in demo scenarios",
+    "airport_corridor": ["q4_end_push", "balanced_growth", "aggressive_revenue_push"],
+    "downtown": ["balanced_growth", "market_expansion", "trust_first"],
+    "stadium": ["aggressive_revenue_push", "balanced_growth"],
+    "suburbs": ["trust_first", "loyalty_reward", "balanced_growth"],
+    "venue": ["balanced_growth", "market_expansion"]
+  },
+  
+  "_notes": [
+    "Revenue goals are expressed as decimal percentages (0.15 = 15% increase target)",
+    "Corporate pressure factor is capped at 8% actual influence regardless of goal",
+    "Strategies can be combined with scenarios to create realistic demo cases",
+    "Emergency scenarios override all corporate pressure (ethical guardrails)"
+  ]
+}
+

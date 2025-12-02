@@ -1,0 +1,196 @@
+{
+  "_comment": "MOCK/DEMO ONLY - NOT PRODUCTION DATA",
+  "_description": "Zone-level historical surge patterns for hackathon demo. Used by historical agent and recommendation service.",
+  "_usage": "These patterns represent typical historical pricing outcomes for key zones and scenarios.",
+  
+  "zones": {
+    "airport_corridor": {
+      "_description": "Airport corridor zone - high traffic, time-sensitive trips",
+      "time_of_day_multipliers": {
+        "morning": {
+          "hours": [6, 7, 8, 9, 10],
+          "base_multiplier": 1.10,
+          "description": "Morning rush to airport - high demand"
+        },
+        "afternoon": {
+          "hours": [12, 13, 14, 15, 16],
+          "base_multiplier": 1.05,
+          "description": "Afternoon airport trips - moderate demand"
+        },
+        "evening": {
+          "hours": [17, 18, 19, 20],
+          "base_multiplier": 1.12,
+          "description": "Evening commute from airport - peak demand"
+        },
+        "night": {
+          "hours": [21, 22, 23, 0, 1, 2, 3, 4, 5],
+          "base_multiplier": 1.08,
+          "description": "Late night/early morning airport trips"
+        }
+      },
+      "scenario_multipliers": {
+        "normal": 1.0,
+        "storm": 1.15,
+        "road_closure": 1.10,
+        "concert": 1.12,
+        "holiday": 1.18,
+        "emergency": 1.0
+      },
+      "historical_success_rate": 0.85,
+      "typical_adjustment_range": [0.05, 0.15]
+    },
+    
+    "downtown": {
+      "_description": "Downtown urban core - mixed demand patterns",
+      "time_of_day_multipliers": {
+        "morning": {
+          "hours": [7, 8, 9],
+          "base_multiplier": 1.08,
+          "description": "Morning commute into downtown"
+        },
+        "afternoon": {
+          "hours": [12, 13, 14, 15, 16],
+          "base_multiplier": 1.03,
+          "description": "Afternoon business travel - moderate"
+        },
+        "evening": {
+          "hours": [17, 18, 19, 20],
+          "base_multiplier": 1.10,
+          "description": "Evening commute and dinner rush"
+        },
+        "night": {
+          "hours": [21, 22, 23, 0, 1, 2],
+          "base_multiplier": 1.15,
+          "description": "Nightlife and entertainment demand"
+        }
+      },
+      "scenario_multipliers": {
+        "normal": 1.0,
+        "storm": 1.12,
+        "road_closure": 1.08,
+        "concert": 1.20,
+        "holiday": 1.15,
+        "emergency": 1.0
+      },
+      "historical_success_rate": 0.78,
+      "typical_adjustment_range": [0.03, 0.12]
+    },
+    
+    "stadium": {
+      "_description": "Stadium/venue zone - event-driven demand spikes",
+      "time_of_day_multipliers": {
+        "morning": {
+          "hours": [6, 7, 8, 9, 10, 11],
+          "base_multiplier": 1.05,
+          "description": "Morning events rare - standard pricing"
+        },
+        "afternoon": {
+          "hours": [12, 13, 14, 15, 16],
+          "base_multiplier": 1.10,
+          "description": "Afternoon events - moderate surge"
+        },
+        "evening": {
+          "hours": [17, 18, 19, 20],
+          "base_multiplier": 1.25,
+          "description": "Evening events - peak surge expected"
+        },
+        "night": {
+          "hours": [21, 22, 23, 0],
+          "base_multiplier": 1.20,
+          "description": "Post-event departure surge"
+        }
+      },
+      "scenario_multipliers": {
+        "normal": 1.0,
+        "storm": 1.18,
+        "road_closure": 1.12,
+        "concert": 1.30,
+        "holiday": 1.25,
+        "emergency": 1.0
+      },
+      "historical_success_rate": 0.82,
+      "typical_adjustment_range": [0.10, 0.25]
+    },
+    
+    "suburbs": {
+      "_description": "Suburban zones - stable, predictable demand",
+      "time_of_day_multipliers": {
+        "morning": {
+          "hours": [7, 8, 9],
+          "base_multiplier": 1.03,
+          "description": "Morning commute - slight increase"
+        },
+        "afternoon": {
+          "hours": [12, 13, 14, 15, 16, 17],
+          "base_multiplier": 1.0,
+          "description": "Afternoon - standard pricing"
+        },
+        "evening": {
+          "hours": [18, 19, 20],
+          "base_multiplier": 1.02,
+          "description": "Evening - minimal adjustment"
+        },
+        "night": {
+          "hours": [21, 22, 23, 0, 1, 2, 3, 4, 5, 6],
+          "base_multiplier": 1.05,
+          "description": "Night - limited supply, slight increase"
+        }
+      },
+      "scenario_multipliers": {
+        "normal": 1.0,
+        "storm": 1.08,
+        "road_closure": 1.05,
+        "concert": 1.10,
+        "holiday": 1.12,
+        "emergency": 1.0
+      },
+      "historical_success_rate": 0.90,
+      "typical_adjustment_range": [0.0, 0.05]
+    },
+    
+    "venue": {
+      "_description": "Generic venue zone - similar to stadium but more flexible",
+      "time_of_day_multipliers": {
+        "morning": {
+          "hours": [6, 7, 8, 9, 10, 11],
+          "base_multiplier": 1.0,
+          "description": "Morning - standard pricing"
+        },
+        "afternoon": {
+          "hours": [12, 13, 14, 15, 16],
+          "base_multiplier": 1.08,
+          "description": "Afternoon events - moderate surge"
+        },
+        "evening": {
+          "hours": [17, 18, 19, 20, 21],
+          "base_multiplier": 1.22,
+          "description": "Evening events - high surge"
+        },
+        "night": {
+          "hours": [22, 23, 0, 1],
+          "base_multiplier": 1.18,
+          "description": "Late night events - elevated pricing"
+        }
+      },
+      "scenario_multipliers": {
+        "normal": 1.0,
+        "storm": 1.15,
+        "road_closure": 1.10,
+        "concert": 1.28,
+        "holiday": 1.22,
+        "emergency": 1.0
+      },
+      "historical_success_rate": 0.80,
+      "typical_adjustment_range": [0.08, 0.20]
+    }
+  },
+  
+  "_notes": [
+    "Multipliers are cumulative - apply time_of_day first, then scenario",
+    "Example: airport_corridor + morning (1.10) + storm (1.15) = 1.265x base price",
+    "Emergency scenarios always override to 1.0x (no surge)",
+    "Historical success rate indicates acceptance of pricing at these levels",
+    "Typical adjustment range shows expected percentage increase (0.05 = +5%)"
+  ]
+}
+
