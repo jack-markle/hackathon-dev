@@ -6,7 +6,7 @@ pydantic-settings==2.1.0
 
 # LangChain - for Dev 2 orchestrator and agents
 langchain==0.1.4
-langchain-core==0.1.15
+langchain-core==0.1.16
 langchain-openai==0.0.5
 
 # HTTP client for n8n integration - for Dev 4
