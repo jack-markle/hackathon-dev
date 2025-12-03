@@ -236,7 +236,7 @@ export default function Home() {
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 bg-clip-text text-transparent" style={{
                   backgroundSize: '300% 300%',
-                  animation: 'flow-text 6s ease-in-out infinite'
+                  animation: 'flow-text 12s ease-in-out infinite'
                 }}>
                   RideFlow
           </h1>
@@ -749,7 +749,7 @@ export default function Home() {
                 <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-blue-100">
                   <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 px-4 py-3" style={{
                     backgroundSize: '200% 200%',
-                    animation: 'flow-bg 8s ease-in-out infinite'
+                    animation: 'flow-bg 12s ease-in-out infinite'
                   }}>
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
