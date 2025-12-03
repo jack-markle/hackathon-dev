@@ -32,5 +32,5 @@ body {
 .flow-gradient {
   background: linear-gradient(135deg, #e0f2fe, #bae6fd, #7dd3fc, #38bdf8, #0ea5e9);
   background-size: 200% 200%;
-  animation: flow-bg 4s ease-in-out infinite;
+  animation: flow-bg 12s ease-in-out infinite;
 }
