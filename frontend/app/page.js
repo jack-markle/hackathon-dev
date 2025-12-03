@@ -652,7 +652,7 @@ export default function Home() {
                   </button>
                   {showEmptyStateHint && (
                     <p className="text-xs text-blue-500 italic flex-1 text-center">
-                      Quick start: Select a zone, choose a scenario, and click "Generate Recommendation" to see AI-powered pricing insights.
+                      Quick start: Select a zone, choose a scenario, and click &quot;Generate Recommendation&quot; to see AI-powered pricing insights.
                     </p>
                   )}
                 </div>
