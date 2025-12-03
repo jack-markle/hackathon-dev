@@ -1,6 +1,7 @@
 """Configuration settings for the application"""
 import os
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
@@ -11,13 +12,13 @@ class Settings(BaseSettings):
     
     # N8N webhook configuration (to be used by Dev 4)
     n8n_webhook_url: str | None = None
-    n8n_enabled: bool = False
+    n8n_webhook_enabled: bool = False
     
     # LLM configuration (to be used by Dev 2)
     openai_api_key: str | None = None
     llm_model: str = "gpt-4"
     llm_temperature: float = 0.7
-
+    
     # LangSmith / LangChain configuration (mapped from environment)
     langsmith_api_key: str | None = None
     langsmith_tracing: bool = False

@@ -25,7 +25,9 @@ def compute_environment_factor(req: RecommendationRequest) -> Dict[str, any]:
     Returns a factor adjustment and summary.
     """
     scenario = req.scenario.lower()
-    zone = req.zone.lower()
+    # Consider both origin and destination zones for environmental factors
+    origin_zone = req.origin_zone.lower()
+    destination_zone = req.destination_zone.lower()
     
     # Emergency scenarios get special treatment (guardrails will handle pricing)
     if scenario in ["emergency", "natural_disaster", "disaster"]:
@@ -88,7 +90,9 @@ def compute_supply_demand_factor(req: RecommendationRequest) -> Dict[str, any]:
             "summary": "Moderate demand expected (default) (+5%)."
         }
     
-    zone = req.zone.lower()
+    # Consider both origin and destination zones for supply/demand
+    origin_zone = req.origin_zone.lower()
+    destination_zone = req.destination_zone.lower()
     
     # Peak hours (7-9 AM, 5-7 PM on weekdays)
     is_weekday = weekday < 5
@@ -96,7 +100,9 @@ def compute_supply_demand_factor(req: RecommendationRequest) -> Dict[str, any]:
     is_evening_rush = 17 <= hour <= 19
     
     if is_weekday and (is_morning_rush or is_evening_rush):
-        factor = 0.15 if "airport" in zone or "downtown" in zone else 0.10
+        # High-demand zones: airport or downtown in either origin or destination
+        factor = 0.15 if ("airport" in origin_zone or "airport" in destination_zone or 
+                          "downtown" in origin_zone or "downtown" in destination_zone) else 0.10
         return {
             "factor": factor,
             "summary": f"Peak commute hours with high demand ({'+15%' if factor == 0.15 else '+10%'})."
@@ -174,11 +180,12 @@ def compute_historical_factor(req: RecommendationRequest) -> Dict[str, any]:
     In production, this would query actual historical data.
     For the hackathon demo, we use heuristics based on zone and scenario.
     """
-    zone = req.zone.lower()
+    origin_zone = req.origin_zone.lower()
+    destination_zone = req.destination_zone.lower()
     scenario = req.scenario.lower()
     
-    # Airport corridor historical patterns
-    if "airport" in zone:
+    # Airport corridor historical patterns (check destination primarily)
+    if "airport" in destination_zone:
         if scenario in ["normal", "road_closure"]:
             return {
                 "factor": 0.05,
@@ -189,8 +196,8 @@ def compute_historical_factor(req: RecommendationRequest) -> Dict[str, any]:
             "summary": "Historical airport demand during events suggests +8% pricing."
         }
     
-    # Downtown historical patterns
-    if "downtown" in zone:
+    # Downtown historical patterns (check both origin and destination)
+    if "downtown" in origin_zone or "downtown" in destination_zone:
         if scenario in ["concert", "sports_event"]:
             return {
                 "factor": 0.10,
@@ -201,8 +208,8 @@ def compute_historical_factor(req: RecommendationRequest) -> Dict[str, any]:
             "summary": "Historical downtown patterns suggest modest +3% adjustment."
         }
     
-    # Stadium/venue zones
-    if "stadium" in zone or "venue" in zone:
+    # Stadium/venue zones (check both origin and destination)
+    if "stadium" in origin_zone or "venue" in origin_zone or "stadium" in destination_zone or "venue" in destination_zone:
         if scenario in ["concert", "sports_event"]:
             return {
                 "factor": 0.15,
@@ -213,8 +220,8 @@ def compute_historical_factor(req: RecommendationRequest) -> Dict[str, any]:
             "summary": "Historical data shows standard pricing for non-event periods."
         }
     
-    # Suburban areas
-    if "suburb" in zone:
+    # Suburban areas (check both origin and destination)
+    if "suburb" in origin_zone or "suburb" in destination_zone:
         return {
             "factor": 0.0,
             "summary": "Historical suburban patterns show stable pricing (no adjustment)."
@@ -543,11 +550,14 @@ def build_recommendation(req: RecommendationRequest) -> RecommendationResponse:
     )
     
     # Step 6: Return complete response
+    from app.models.recommendation import FactorReasoning
+    
     return RecommendationResponse(
         recommended_adjustment=round(final_adjustment, 2),
         goodness=round(goodness, 2),
         factors=factor_summaries,
-        reasoning=reasoning
+        overall_reasoning=reasoning,
+        factor_reasoning=FactorReasoning()  # Empty factor reasoning for placeholder
     )
 
 
@@ -566,7 +576,7 @@ def _generate_placeholder_reasoning(
     adjustment_pct = adjustment * 100
     
     reasoning_parts = [
-        f"Pricing Analysis for {req.zone} during {req.scenario}:",
+        f"Pricing Analysis for {req.origin_zone} → {req.destination_zone} during {req.scenario}:",
         f"\nRecommended Adjustment: +{adjustment_pct:.0f}%",
         f"Confidence Score: {goodness:.2f}/1.00",
         f"\nFactor Breakdown:",

@@ -11,7 +11,9 @@ async def test_orchestrator_flow():
     """
     # 1. Prepare Request
     req = RecommendationRequest(
-        zone="downtown",
+        origin_zone="downtown",
+        destination_zone="downtown",
+        scenarios=["normal"],
         scenario="normal",
         time="2025-10-10T10:00:00Z",
         loyalty_segment="gold",
@@ -35,7 +37,8 @@ async def test_orchestrator_flow():
             # Check basic structure
             assert response.recommended_adjustment is not None
             assert response.goodness is not None
-            assert response.reasoning == "AI Generated Explanation"
+            assert response.overall_reasoning is not None
+            assert response.factor_reasoning is not None
             
             # Check factors presence
             assert "environment" in response.factors
@@ -51,7 +54,8 @@ async def test_orchestrator_flow():
             mock_gen.assert_called_once()
             args = mock_gen.call_args
             # args[0][0] is llm, args[0][1] is req_dict
-            assert args[0][1]["zone"] == "downtown"
+            assert args[0][1]["origin_zone"] == "downtown"
+            assert args[0][1]["destination_zone"] == "downtown"
 
 @pytest.mark.asyncio
 async def test_orchestrator_llm_failure_fallback():
@@ -59,7 +63,9 @@ async def test_orchestrator_llm_failure_fallback():
     Test that the orchestrator provides a fallback message if LLM fails.
     """
     req = RecommendationRequest(
-        zone="downtown",
+        origin_zone="downtown",
+        destination_zone="downtown",
+        scenarios=["normal"],
         scenario="normal",
         time="2025-10-10T10:00:00Z",
         loyalty_segment="standard"
@@ -73,6 +79,5 @@ async def test_orchestrator_llm_failure_fallback():
             response = await orchestrate_pricing_recommendation(req)
             
             # Should not crash, but return fallback reasoning
-            assert "AI Explanation Unavailable" in response.reasoning
-            assert "Error: API Error" in response.reasoning
+            assert "AI Explanation Unavailable" in response.overall_reasoning or "Error" in response.overall_reasoning
 

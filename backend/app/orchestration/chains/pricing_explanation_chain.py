@@ -53,8 +53,10 @@ CRITICAL RULES:
     human_template = """Please explain this pricing recommendation:
 
 CONTEXT:
-Zone: {zone}
-Scenario: {scenario}
+Origin Zone: {origin_zone}
+Destination Zone: {destination_zone}
+Scenarios: {scenarios}
+Primary Scenario: {scenario}
 Time: {time}
 Loyalty Tier: {loyalty}
 
@@ -84,7 +86,9 @@ Explain the reasoning, highlighting the key drivers and any trade-offs.
         guardrails_text = f"- GUARDRAILS ACTIVE: {factors['guardrails']}"
 
     input_vars = {
-        "zone": request.get("zone", "Unknown"),
+        "origin_zone": request.get("origin_zone", "Unknown"),
+        "destination_zone": request.get("destination_zone", "Unknown"),
+        "scenarios": ", ".join(request.get("scenarios", [])),
         "scenario": request.get("scenario", "Unknown"),
         "time": request.get("time", "Unknown"),
         "loyalty": request.get("loyalty_segment") or "Standard",

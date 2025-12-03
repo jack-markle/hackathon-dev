@@ -15,7 +15,9 @@ SCENARIOS = {
     "emergency_no_surge": {
         "description": "Emergency situation should result in zero surge",
         "request": RecommendationRequest(
-            zone="downtown",
+            origin_zone="downtown",
+            destination_zone="downtown",
+            scenarios=["emergency"],
             scenario="emergency",
             time="2025-12-01T14:00:00Z",
             loyalty_segment="standard",
@@ -31,7 +33,9 @@ SCENARIOS = {
     "concert_platinum_loyalty": {
         "description": "Concert event with platinum member - loyalty softens surge",
         "request": RecommendationRequest(
-            zone="stadium",
+            origin_zone="downtown",
+            destination_zone="stadium",
+            scenarios=["concert"],
             scenario="concert",
             time="2025-12-01T20:00:00Z",
             loyalty_segment="platinum",
@@ -47,7 +51,9 @@ SCENARIOS = {
     "storm_gold_morning_rush": {
         "description": "Storm during morning rush at airport with gold member",
         "request": RecommendationRequest(
-            zone="airport_corridor",
+            origin_zone="downtown",
+            destination_zone="airport_corridor",
+            scenarios=["storm"],
             scenario="storm",
             time="2025-12-02T07:30:00Z",
             loyalty_segment="gold",
@@ -63,7 +69,9 @@ SCENARIOS = {
     "road_closure_evening": {
         "description": "Road closure during evening commute",
         "request": RecommendationRequest(
-            zone="airport_corridor",
+            origin_zone="downtown",
+            destination_zone="airport_corridor",
+            scenarios=["road_closure"],
             scenario="road_closure",
             time="2025-12-01T18:00:00Z",
             loyalty_segment="gold",
@@ -81,7 +89,9 @@ SCENARIOS = {
     "weekend_night_downtown": {
         "description": "Weekend night entertainment demand",
         "request": RecommendationRequest(
-            zone="downtown",
+            origin_zone="suburbs",
+            destination_zone="downtown",
+            scenarios=["normal"],
             scenario="normal",
             time="2025-12-06T22:00:00Z",  # Saturday night
             loyalty_segment="silver"
@@ -96,7 +106,9 @@ SCENARIOS = {
     "off_peak_suburban": {
         "description": "Off-peak suburban area - minimal adjustment",
         "request": RecommendationRequest(
-            zone="suburbs",
+            origin_zone="suburbs",
+            destination_zone="suburbs",
+            scenarios=["normal"],
             scenario="normal",
             time="2025-12-02T14:00:00Z",
             loyalty_segment="standard"
@@ -111,7 +123,9 @@ SCENARIOS = {
     "high_corporate_pressure_no_market": {
         "description": "High corporate pressure without market justification - should flag tension",
         "request": RecommendationRequest(
-            zone="suburbs",
+            origin_zone="suburbs",
+            destination_zone="suburbs",
+            scenarios=["normal"],
             scenario="normal",
             time="2025-12-02T14:00:00Z",
             loyalty_segment="standard",
@@ -128,7 +142,9 @@ SCENARIOS = {
     "holiday_airport": {
         "description": "Holiday travel at airport",
         "request": RecommendationRequest(
-            zone="airport_corridor",
+            origin_zone="downtown",
+            destination_zone="airport_corridor",
+            scenarios=["holiday"],
             scenario="holiday",
             time="2025-12-25T16:00:00Z",
             loyalty_segment="gold"
@@ -157,8 +173,10 @@ def run_scenario(scenario_name: str, scenario_data: dict) -> dict:
     
     # Display request details
     print(f"\nRequest Details:")
-    print(f"  Zone: {request.zone}")
-    print(f"  Scenario: {request.scenario}")
+    print(f"  Origin Zone: {request.origin_zone}")
+    print(f"  Destination Zone: {request.destination_zone}")
+    print(f"  Scenarios: {request.scenarios}")
+    print(f"  Primary Scenario: {request.scenario}")
     print(f"  Time: {request.time}")
     print(f"  Loyalty: {request.loyalty_segment or 'standard'}")
     if request.corporate_revenue_goal:
