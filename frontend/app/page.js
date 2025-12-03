@@ -225,7 +225,7 @@ export default function Home() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-xl border-b border-blue-100">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="grid grid-cols-3 items-center">
             {/* Company Logo & Name */}
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg shadow-lg">
@@ -239,12 +239,12 @@ export default function Home() {
                   animation: 'flow-text 12s ease-in-out infinite'
                 }}>
                   RideFlow
-          </h1>
+                </h1>
                 <p className="text-xs text-slate-500">Hop in and go with the flow...</p>
               </div>
             </div>
 
-            {/* App Title */}
+            {/* App Title - Centered */}
             <div className="text-center">
               <h2 className="text-lg font-semibold bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-500 bg-clip-text text-transparent">
                 AI Pricing Monitor & Advisor
@@ -254,12 +254,14 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Menu Button */}
-            <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-              <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
-              </svg>
-            </button>
+            {/* Menu Button - Right aligned */}
+            <div className="flex justify-end">
+              <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -675,7 +677,7 @@ export default function Home() {
               <div className="space-y-4 animate-[slideUp_0.6s_ease-out]">
                 {/* Main Recommendation */}
                 <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-blue-100">
-                  <div className="bg-gradient-to-r from-blue-500 to-cyan-600 px-4 py-3">
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-4 py-3">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
@@ -717,14 +719,12 @@ export default function Home() {
                     </h3>
                   </div>
                   <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-2xl font-bold text-blue-800">
-                          {Math.round(results.goodness * 100)}/100
-                        </div>
-                        <div className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${results.goodnessColor}`}>
-                          {results.goodnessLabel}
-                        </div>
+                    <div className="flex items-center justify-center gap-6">
+                      <div className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${results.goodnessColor}`}>
+                        {results.goodnessLabel}
+                      </div>
+                      <div className="text-2xl font-bold text-blue-800">
+                        {Math.round(results.goodness * 100)}/100
                       </div>
                       <div className="w-16 h-16 relative">
                         <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 100 100">
@@ -747,10 +747,7 @@ export default function Home() {
 
                 {/* AI Reasoning */}
                 <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-blue-100">
-                  <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 px-4 py-3" style={{
-                    backgroundSize: '200% 200%',
-                    animation: 'flow-bg 12s ease-in-out infinite'
-                  }}>
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-4 py-3">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
