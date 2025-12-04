@@ -172,8 +172,55 @@ def compute_supply_demand_factor(req: RecommendationRequest) -> Dict[str, Any]:
     Compute supply/demand impact on pricing.
     
     Considers: time of day, day of week, driver availability patterns.
+    If number_of_riders and number_of_drivers are provided, uses them for data-driven calculation.
     Returns a factor adjustment and summary.
     """
+    # Priority: Use real-time rider/driver data if available
+    if req.number_of_riders is not None and req.number_of_drivers is not None:
+        if req.number_of_drivers > 0:
+            demand_supply_ratio = req.number_of_riders / req.number_of_drivers
+            
+            # High demand: ratio > 1.5 (more riders than drivers)
+            if demand_supply_ratio > 2.0:
+                factor = 0.20
+                summary = f"Critical supply shortage: {req.number_of_riders} riders vs {req.number_of_drivers} drivers (ratio {demand_supply_ratio:.2f}) (+20%)."
+            elif demand_supply_ratio > 1.5:
+                factor = 0.15
+                summary = f"High demand pressure: {req.number_of_riders} riders vs {req.number_of_drivers} drivers (ratio {demand_supply_ratio:.2f}) (+15%)."
+            elif demand_supply_ratio > 1.0:
+                factor = 0.10
+                summary = f"Moderate demand pressure: {req.number_of_riders} riders vs {req.number_of_drivers} drivers (ratio {demand_supply_ratio:.2f}) (+10%)."
+            elif demand_supply_ratio > 0.7:
+                factor = 0.05
+                summary = f"Balanced supply/demand: {req.number_of_riders} riders vs {req.number_of_drivers} drivers (ratio {demand_supply_ratio:.2f}) (+5%)."
+            else:
+                factor = 0.0
+                summary = f"Surplus supply: {req.number_of_riders} riders vs {req.number_of_drivers} drivers (ratio {demand_supply_ratio:.2f}) (no adjustment)."
+            
+            # Apply vehicle type and duration modifiers if available
+            vehicle_modifier = 0.0
+            duration_modifier = 0.0
+            
+            if req.vehicle_type == "Premium":
+                vehicle_modifier = 0.03  # Premium vehicles command higher pricing
+                summary += f" Premium vehicle adds +3%."
+            
+            if req.expected_ride_duration is not None and req.expected_ride_duration > 45:
+                duration_modifier = 0.02  # Longer rides justify slight premium
+                summary += f" Extended duration ({req.expected_ride_duration} min) adds +2%."
+            
+            return {
+                "factor": factor + vehicle_modifier + duration_modifier,
+                "summary": summary
+            }
+        else:
+            # Zero drivers - critical shortage
+            return {
+                "factor": 0.25,
+                "summary": f"Critical driver shortage: {req.number_of_riders} riders but no available drivers (+25%)."
+            }
+    
+    # Fallback to time-based logic if rider/driver data not available
     try:
         # Parse time to determine demand patterns
         time_obj = datetime.fromisoformat(req.time.replace('Z', '+00:00'))
@@ -181,9 +228,24 @@ def compute_supply_demand_factor(req: RecommendationRequest) -> Dict[str, Any]:
         weekday = time_obj.weekday()  # 0 = Monday, 6 = Sunday
     except:
         # Default to moderate if we can't parse time
+        base_factor = 0.05
+        summary = "Moderate demand expected (default) (+5%)."
+        
+        # Still apply vehicle/duration modifiers if available
+        vehicle_modifier = 0.0
+        duration_modifier = 0.0
+        
+        if req.vehicle_type == "Premium":
+            vehicle_modifier = 0.03
+            summary += " Premium vehicle adds +3%."
+        
+        if req.expected_ride_duration is not None and req.expected_ride_duration > 45:
+            duration_modifier = 0.02
+            summary += f" Extended duration ({req.expected_ride_duration} min) adds +2%."
+        
         return {
-            "factor": 0.05,
-            "summary": "Moderate demand expected (default) (+5%)."
+            "factor": base_factor + vehicle_modifier + duration_modifier,
+            "summary": summary
         }
     
     # Consider both origin and destination zones for supply/demand
@@ -195,40 +257,42 @@ def compute_supply_demand_factor(req: RecommendationRequest) -> Dict[str, Any]:
     is_morning_rush = 7 <= hour <= 9
     is_evening_rush = 17 <= hour <= 19
     
+    base_factor = 0.0
+    summary = ""
+    
     if is_weekday and (is_morning_rush or is_evening_rush):
         # High-demand zones: airport or downtown in either origin or destination
-        factor = 0.15 if ("airport" in origin_zone or "airport" in destination_zone or 
+        base_factor = 0.15 if ("airport" in origin_zone or "airport" in destination_zone or 
                           "downtown" in origin_zone or "downtown" in destination_zone) else 0.10
-        return {
-            "factor": factor,
-            "summary": f"Peak commute hours with high demand ({'+15%' if factor == 0.15 else '+10%'})."
-        }
+        summary = f"Peak commute hours with high demand ({'+15%' if base_factor == 0.15 else '+10%'})."
+    elif hour >= 23 or hour <= 4:
+        base_factor = 0.12
+        summary = "Late night hours with limited driver availability (+12%)."
+    elif weekday in [4, 5] and (hour >= 20 or hour <= 2):  # Friday/Saturday 8 PM - 2 AM
+        base_factor = 0.18
+        summary = "Weekend night with high entertainment demand (+18%)."
+    elif not is_weekday and 10 <= hour <= 18:
+        base_factor = 0.05
+        summary = "Weekend leisure travel - moderate demand (+5%)."
+    else:
+        base_factor = 0.0
+        summary = "Off-peak hours with balanced supply and demand (no adjustment)."
     
-    # Late night hours (11 PM - 4 AM) - lower supply
-    if hour >= 23 or hour <= 4:
-        return {
-            "factor": 0.12,
-            "summary": "Late night hours with limited driver availability (+12%)."
-        }
+    # Apply vehicle type and duration modifiers if available
+    vehicle_modifier = 0.0
+    duration_modifier = 0.0
     
-    # Weekend nights (Friday/Saturday 8 PM - 2 AM)
-    if weekday in [4, 5] and (hour >= 20 or hour <= 2):  # Friday/Saturday 8 PM - 2 AM
-        return {
-            "factor": 0.18,
-            "summary": "Weekend night with high entertainment demand (+18%)."
-        }
+    if req.vehicle_type == "Premium":
+        vehicle_modifier = 0.03
+        summary += " Premium vehicle adds +3%."
     
-    # Weekend days
-    if not is_weekday and 10 <= hour <= 18:
-        return {
-            "factor": 0.05,
-            "summary": "Weekend leisure travel - moderate demand (+5%)."
-        }
+    if req.expected_ride_duration is not None and req.expected_ride_duration > 45:
+        duration_modifier = 0.02
+        summary += f" Extended duration ({req.expected_ride_duration} min) adds +2%."
     
-    # Off-peak hours
     return {
-        "factor": 0.0,
-        "summary": "Off-peak hours with balanced supply and demand (no adjustment)."
+        "factor": base_factor + vehicle_modifier + duration_modifier,
+        "summary": summary
     }
 
 
@@ -378,12 +442,59 @@ def compute_historical_factor(req: RecommendationRequest) -> Dict[str, Any]:
             pattern_factor = 0.02
             pattern_summary = "Default historical patterns"
     
-    # Step B: Get data-driven metric from CSV
+    # Step B: Get data-driven metric from CSV or use provided historical_cost_of_ride
     csv_factor = 0.0
     csv_summary = ""
     historical_df = _data_loader.get_historical_dataframe()
     
-    if historical_df is not None and not historical_df.empty:
+    # Priority: Use provided historical_cost_of_ride if available
+    if req.historical_cost_of_ride is not None and req.historical_cost_of_ride > 0:
+        # Compare provided historical cost against baseline
+        baseline_cost = None
+        
+        if historical_df is not None and not historical_df.empty:
+            try:
+                # Try to get a relevant baseline from CSV
+                origin_location = _map_app_zone_to_csv_location(req.origin_zone)
+                dest_location = _map_app_zone_to_csv_location(req.destination_zone)
+                
+                filtered_df = historical_df.copy()
+                
+                # Filter by location if available
+                if origin_location or dest_location:
+                    location_filter = False
+                    if origin_location:
+                        location_filter = (filtered_df["Location_Category"] == origin_location)
+                    if dest_location:
+                        location_filter = location_filter | (filtered_df["Location_Category"] == dest_location)
+                    filtered_df = filtered_df[location_filter]
+                
+                # Filter by time period if available
+                if time_period:
+                    filtered_df = filtered_df[filtered_df["Time_of_Booking"] == time_period]
+                
+                if not filtered_df.empty and "Historical_Cost_of_Ride" in filtered_df.columns:
+                    baseline_cost = filtered_df["Historical_Cost_of_Ride"].mean()
+                else:
+                    # Fallback to global average
+                    baseline_cost = historical_df["Historical_Cost_of_Ride"].mean()
+            except Exception as e:
+                logger.warning(f"Error processing CSV for baseline: {e}", exc_info=True)
+                # Fallback to global average
+                if historical_df is not None and "Historical_Cost_of_Ride" in historical_df.columns:
+                    baseline_cost = historical_df["Historical_Cost_of_Ride"].mean()
+        
+        # If we have a baseline, calculate factor
+        if baseline_cost is not None and baseline_cost > 0:
+            csv_factor = (req.historical_cost_of_ride / baseline_cost) - 1.0
+            csv_summary = f"Provided historical cost (${req.historical_cost_of_ride:.2f}) vs baseline (${baseline_cost:.2f}) suggests {csv_factor*100:+.1f}% adjustment"
+        else:
+            # No baseline available - use a conservative estimate
+            csv_summary = f"Historical cost provided (${req.historical_cost_of_ride:.2f}) but no baseline available for comparison"
+            csv_factor = 0.0
+    
+    # Fallback: Use CSV data if historical_cost_of_ride not provided
+    elif historical_df is not None and not historical_df.empty:
         try:
             # Map zones to CSV Location_Category
             origin_location = _map_app_zone_to_csv_location(req.origin_zone)
@@ -425,7 +536,7 @@ def compute_historical_factor(req: RecommendationRequest) -> Dict[str, Any]:
             csv_summary = "CSV data processing error"
     
     # Step C: Blend pattern-based and CSV-based factors
-    # Weight: 60% pattern (from JSON), 40% CSV data
+    # Weight: 60% pattern (from JSON), 40% CSV data (or provided historical cost)
     blended_factor = (pattern_factor * 0.6) + (csv_factor * 0.4)
     
     # Build summary

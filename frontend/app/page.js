@@ -69,6 +69,12 @@ export default function Home() {
   const [strategyNotes, setStrategyNotes] = useState('Q4 revenue push');
   const [additionalContext, setAdditionalContext] = useState('Storm expected to reduce driver availability by 40%.');
   const [isLoading, setIsLoading] = useState(false);
+  // New fields from gap analysis
+  const [numberOfRiders, setNumberOfRiders] = useState('');
+  const [numberOfDrivers, setNumberOfDrivers] = useState('');
+  const [historicalCost, setHistoricalCost] = useState('');
+  const [vehicleType, setVehicleType] = useState('');
+  const [expectedDuration, setExpectedDuration] = useState('');
   
   // Use DOM refs to directly access input elements at submission time
   const revenueGoalInputRef = useRef(null);
@@ -151,6 +157,23 @@ export default function Home() {
       corporate_revenue_goal: currentRevenueGoal / 100, // Convert percentage to decimal (3% -> 0.03)
       corporate_strategy_notes: currentStrategyNotes
     };
+    
+    // Add new optional fields if provided
+    if (numberOfRiders !== '' && numberOfRiders !== null) {
+      payload.number_of_riders = parseInt(numberOfRiders, 10);
+    }
+    if (numberOfDrivers !== '' && numberOfDrivers !== null) {
+      payload.number_of_drivers = parseInt(numberOfDrivers, 10);
+    }
+    if (historicalCost !== '' && historicalCost !== null) {
+      payload.historical_cost_of_ride = parseFloat(historicalCost);
+    }
+    if (vehicleType !== '' && vehicleType !== null) {
+      payload.vehicle_type = vehicleType;
+    }
+    if (expectedDuration !== '' && expectedDuration !== null) {
+      payload.expected_ride_duration = parseInt(expectedDuration, 10);
+    }
 
     // Log payload for debugging
     console.log('Payload:', payload);
@@ -490,6 +513,103 @@ export default function Home() {
                   </select>
                   <p className="text-xs text-slate-600">
                     {loyaltySegments[loyaltySegment].description}
+                  </p>
+                </div>
+
+                {/* Supply & Demand Data Section */}
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                  <h3 className="font-bold text-amber-800 text-sm flex items-center gap-2">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    Supply & Demand Data (Optional)
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-amber-800">
+                        Number of Riders
+                      </label>
+                      <input
+                        type="number"
+                        value={numberOfRiders}
+                        onChange={(e) => setNumberOfRiders(e.target.value)}
+                        className="w-full p-2 border border-amber-300 rounded text-sm focus:border-amber-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        min="0"
+                        placeholder="e.g., 90"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-amber-800">
+                        Number of Drivers
+                      </label>
+                      <input
+                        type="number"
+                        value={numberOfDrivers}
+                        onChange={(e) => setNumberOfDrivers(e.target.value)}
+                        className="w-full p-2 border border-amber-300 rounded text-sm focus:border-amber-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        min="0"
+                        placeholder="e.g., 45"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-amber-700 italic">
+                    Provide real-time supply/demand data for more accurate pricing recommendations.
+                  </p>
+                </div>
+
+                {/* Trip Details Section */}
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-3">
+                  <h3 className="font-bold text-emerald-800 text-sm flex items-center gap-2">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Trip Details (Optional)
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-emerald-800">
+                        Vehicle Type
+                      </label>
+                      <select
+                        value={vehicleType}
+                        onChange={(e) => setVehicleType(e.target.value)}
+                        className="w-full p-2 border border-emerald-300 rounded text-sm focus:border-emerald-500 focus:outline-none bg-white text-slate-800 mt-1"
+                      >
+                        <option value="">Select...</option>
+                        <option value="Economy">Economy</option>
+                        <option value="Premium">Premium</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-emerald-800">
+                        Expected Duration (min)
+                      </label>
+                      <input
+                        type="number"
+                        value={expectedDuration}
+                        onChange={(e) => setExpectedDuration(e.target.value)}
+                        className="w-full p-2 border border-emerald-300 rounded text-sm focus:border-emerald-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        min="0"
+                        placeholder="e.g., 90"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-emerald-800">
+                      Historical Cost ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={historicalCost}
+                      onChange={(e) => setHistoricalCost(e.target.value)}
+                      className="w-full p-2 border border-emerald-300 rounded text-sm focus:border-emerald-500 focus:outline-none bg-white text-slate-800 mt-1"
+                      min="0"
+                      step="0.01"
+                      placeholder="e.g., 284.26"
+                    />
+                  </div>
+                  <p className="text-xs text-emerald-700 italic">
+                    Provide trip-specific details to refine pricing recommendations.
                   </p>
                 </div>
 

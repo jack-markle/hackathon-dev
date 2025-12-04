@@ -14,6 +14,12 @@ class RecommendationRequest(BaseModel):
     notes: str | None = Field(None, description="Optional free-text notes about the scenario")
     corporate_revenue_goal: float | None = Field(None, description="Target revenue uplift percentage (e.g., 0.15 for 15%)")
     corporate_strategy_notes: str | None = Field(None, description="Free-text description of corporate strategy")
+    # New fields from CSV gap analysis (Priority 1 & 2)
+    number_of_riders: int | None = Field(None, ge=0, description="Current number of riders requesting rides in the area")
+    number_of_drivers: int | None = Field(None, ge=0, description="Current number of available drivers in the area")
+    historical_cost_of_ride: float | None = Field(None, ge=0.0, description="Historical cost for similar rides")
+    vehicle_type: str | None = Field(None, pattern="^(Premium|Economy)$", description="Vehicle type requested (Premium or Economy)")
+    expected_ride_duration: int | None = Field(None, ge=0, description="Expected ride duration in minutes")
 
     class Config:
         json_schema_extra = {
@@ -26,7 +32,12 @@ class RecommendationRequest(BaseModel):
                 "loyalty_segment": "gold",
                 "notes": "Storm expected to reduce driver availability by 40%.",
                 "corporate_revenue_goal": 0.03,
-                "corporate_strategy_notes": "Q4 revenue push"
+                "corporate_strategy_notes": "Q4 revenue push",
+                "number_of_riders": 90,
+                "number_of_drivers": 45,
+                "historical_cost_of_ride": 284.26,
+                "vehicle_type": "Premium",
+                "expected_ride_duration": 90
             }
         }
 
