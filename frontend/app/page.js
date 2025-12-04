@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 const zones = {
   downtown: { label: 'Downtown Core', price: 18.50, icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
@@ -69,6 +69,10 @@ export default function Home() {
   const [strategyNotes, setStrategyNotes] = useState('Q4 revenue push');
   const [additionalContext, setAdditionalContext] = useState('Storm expected to reduce driver availability by 40%.');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Use DOM refs to directly access input elements at submission time
+  const revenueGoalInputRef = useRef(null);
+  const strategyNotesInputRef = useRef(null);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [showZoneHint, setShowZoneHint] = useState(false);
@@ -113,6 +117,20 @@ export default function Home() {
   };
 
   const generateRecommendation = async () => {
+    // Read current values directly from DOM inputs first (before any state updates)
+    // This ensures we get the latest values even if React state hasn't updated yet
+    const currentRevenueGoal = revenueGoalInputRef.current ? Number(revenueGoalInputRef.current.value) || 0 : revenueGoal;
+    const currentStrategyNotes = strategyNotesInputRef.current ? strategyNotesInputRef.current.value : strategyNotes;
+    
+    // Sync React state with DOM values to ensure form fields persist after submission
+    // Use a small delay to avoid state update conflicts
+    if (currentRevenueGoal !== revenueGoal) {
+      setRevenueGoal(currentRevenueGoal);
+    }
+    if (currentStrategyNotes !== strategyNotes) {
+      setStrategyNotes(currentStrategyNotes);
+    }
+    
     setIsLoading(true);
     setResults(null);
     setError(null);
@@ -130,8 +148,8 @@ export default function Home() {
       time: time,
       loyalty_segment: loyaltySegment,
       notes: additionalContext,
-      corporate_revenue_goal: revenueGoal / 100, // Convert percentage to decimal (3% -> 0.03)
-      corporate_strategy_notes: strategyNotes
+      corporate_revenue_goal: currentRevenueGoal / 100, // Convert percentage to decimal (3% -> 0.03)
+      corporate_strategy_notes: currentStrategyNotes
     };
 
     // Log payload for debugging
@@ -529,9 +547,13 @@ export default function Home() {
                         Revenue Goal (%)
                       </label>
                       <input
+                        ref={revenueGoalInputRef}
                         type="number"
                         value={revenueGoal}
-                        onChange={(e) => setRevenueGoal(Number(e.target.value))}
+                        onChange={(e) => {
+                          const value = Number(e.target.value) || 0;
+                          setRevenueGoal(value);
+                        }}
                         className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
                         min="0"
                         max="50"
@@ -542,8 +564,11 @@ export default function Home() {
                         Strategy Notes
                       </label>
                       <textarea
+                        ref={strategyNotesInputRef}
                         value={strategyNotes}
-                        onChange={(e) => setStrategyNotes(e.target.value)}
+                        onChange={(e) => {
+                          setStrategyNotes(e.target.value);
+                        }}
                         className="w-full p-2 border border-cyan-300 rounded text-xs focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
                         rows="2"
                       />
