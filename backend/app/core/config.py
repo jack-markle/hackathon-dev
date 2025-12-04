@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # N8N webhook configuration (to be used by Dev 4)
     n8n_webhook_url: str | None = None
     n8n_webhook_enabled: bool = False
+    n8n_alert_email: str | None = None
     
     # LLM configuration (to be used by Dev 2)
     openai_api_key: str | None = None

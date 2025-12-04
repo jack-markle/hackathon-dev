@@ -52,7 +52,8 @@ async def send_pricing_alert(
         "loyalty_segment": req.loyalty_segment,
         "notes": req.notes,
         "corporate_revenue_goal": req.corporate_revenue_goal,
-        "corporate_strategy_notes": req.corporate_strategy_notes
+        "corporate_strategy_notes": req.corporate_strategy_notes,
+        "email_address": settings.n8n_alert_email
     }
     
     try:
