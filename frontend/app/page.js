@@ -517,8 +517,8 @@ export default function Home() {
                 </div>
 
                 {/* Supply & Demand Data Section */}
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
-                  <h3 className="font-bold text-amber-800 text-sm flex items-center gap-2">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                  <h3 className="font-bold text-blue-800 text-sm flex items-center gap-2">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                     </svg>
@@ -526,40 +526,40 @@ export default function Home() {
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold text-amber-800">
+                      <label className="text-xs font-semibold text-blue-800">
                         Number of Riders
                       </label>
                       <input
                         type="number"
                         value={numberOfRiders}
                         onChange={(e) => setNumberOfRiders(e.target.value)}
-                        className="w-full p-2 border border-amber-300 rounded text-sm focus:border-amber-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        className="w-full p-2 border border-blue-300 rounded text-sm focus:border-blue-500 focus:outline-none bg-white text-slate-800 mt-1"
                         min="0"
                         placeholder="e.g., 90"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-amber-800">
+                      <label className="text-xs font-semibold text-blue-800">
                         Number of Drivers
                       </label>
                       <input
                         type="number"
                         value={numberOfDrivers}
                         onChange={(e) => setNumberOfDrivers(e.target.value)}
-                        className="w-full p-2 border border-amber-300 rounded text-sm focus:border-amber-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        className="w-full p-2 border border-blue-300 rounded text-sm focus:border-blue-500 focus:outline-none bg-white text-slate-800 mt-1"
                         min="0"
                         placeholder="e.g., 45"
                       />
                     </div>
                   </div>
-                  <p className="text-xs text-amber-700 italic">
+                  <p className="text-xs text-blue-600 italic">
                     Provide real-time supply/demand data for more accurate pricing recommendations.
                   </p>
                 </div>
 
                 {/* Trip Details Section */}
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-3">
-                  <h3 className="font-bold text-emerald-800 text-sm flex items-center gap-2">
+                <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4 space-y-3">
+                  <h3 className="font-bold text-cyan-800 text-sm flex items-center gap-2">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
@@ -567,13 +567,13 @@ export default function Home() {
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold text-emerald-800">
+                      <label className="text-xs font-semibold text-cyan-800">
                         Vehicle Type
                       </label>
                       <select
                         value={vehicleType}
                         onChange={(e) => setVehicleType(e.target.value)}
-                        className="w-full p-2 border border-emerald-300 rounded text-sm focus:border-emerald-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
                       >
                         <option value="">Select...</option>
                         <option value="Economy">Economy</option>
@@ -581,34 +581,34 @@ export default function Home() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-emerald-800">
+                      <label className="text-xs font-semibold text-cyan-800">
                         Expected Duration (min)
                       </label>
                       <input
                         type="number"
                         value={expectedDuration}
                         onChange={(e) => setExpectedDuration(e.target.value)}
-                        className="w-full p-2 border border-emerald-300 rounded text-sm focus:border-emerald-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
                         min="0"
                         placeholder="e.g., 90"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-emerald-800">
+                    <label className="text-xs font-semibold text-cyan-800">
                       Historical Cost ($)
                     </label>
                     <input
                       type="number"
                       value={historicalCost}
                       onChange={(e) => setHistoricalCost(e.target.value)}
-                      className="w-full p-2 border border-emerald-300 rounded text-sm focus:border-emerald-500 focus:outline-none bg-white text-slate-800 mt-1"
+                      className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
                       min="0"
                       step="0.01"
                       placeholder="e.g., 284.26"
                     />
                   </div>
-                  <p className="text-xs text-emerald-700 italic">
+                  <p className="text-xs text-cyan-700 italic">
                     Provide trip-specific details to refine pricing recommendations.
                   </p>
                 </div>
