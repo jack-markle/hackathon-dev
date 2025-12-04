@@ -10,14 +10,14 @@ This module implements the five conceptual pricing factors:
 
 It also applies ethical and market-based guardrails.
 """
-from typing import Dict
+from typing import Dict, Any
 from datetime import datetime
 from app.models.recommendation import RecommendationRequest, RecommendationResponse
 
 
 # ===== FACTOR COMPUTATION FUNCTIONS =====
 
-def compute_environment_factor(req: RecommendationRequest) -> Dict[str, any]:
+def compute_environment_factor(req: RecommendationRequest) -> Dict[str, Any]:
     """
     Compute environmental impact on pricing.
     
@@ -71,7 +71,7 @@ def compute_environment_factor(req: RecommendationRequest) -> Dict[str, any]:
     }
 
 
-def compute_supply_demand_factor(req: RecommendationRequest) -> Dict[str, any]:
+def compute_supply_demand_factor(req: RecommendationRequest) -> Dict[str, Any]:
     """
     Compute supply/demand impact on pricing.
     
@@ -116,7 +116,7 @@ def compute_supply_demand_factor(req: RecommendationRequest) -> Dict[str, any]:
         }
     
     # Weekend nights (Friday/Saturday 8 PM - 2 AM)
-    if weekday in [4, 5] and 20 <= hour <= 26:  # 26 to handle past midnight
+    if weekday in [4, 5] and (hour >= 20 or hour <= 2):  # Friday/Saturday 8 PM - 2 AM
         return {
             "factor": 0.18,
             "summary": "Weekend night with high entertainment demand (+18%)."
@@ -136,7 +136,7 @@ def compute_supply_demand_factor(req: RecommendationRequest) -> Dict[str, any]:
     }
 
 
-def compute_loyalty_factor(req: RecommendationRequest) -> Dict[str, any]:
+def compute_loyalty_factor(req: RecommendationRequest) -> Dict[str, Any]:
     """
     Compute loyalty tier discount/adjustment.
     
@@ -173,7 +173,7 @@ def compute_loyalty_factor(req: RecommendationRequest) -> Dict[str, any]:
     }
 
 
-def compute_historical_factor(req: RecommendationRequest) -> Dict[str, any]:
+def compute_historical_factor(req: RecommendationRequest) -> Dict[str, Any]:
     """
     Compute adjustment based on historical pricing patterns.
     
@@ -234,7 +234,7 @@ def compute_historical_factor(req: RecommendationRequest) -> Dict[str, any]:
     }
 
 
-def compute_corporate_pressure_factor(req: RecommendationRequest) -> Dict[str, any]:
+def compute_corporate_pressure_factor(req: RecommendationRequest) -> Dict[str, Any]:
     """
     Compute the influence of corporate revenue goals on pricing.
     
@@ -290,8 +290,8 @@ def apply_guardrails(
     base_adjustment: float,
     scenario: str,
     loyalty_segment: str | None,
-    factors: Dict[str, Dict[str, any]]
-) -> Dict[str, any]:
+    factors: Dict[str, Dict[str, Any]]
+) -> Dict[str, Any]:
     """
     Apply ethical and market-based guardrails to the recommended adjustment.
     
@@ -360,11 +360,11 @@ def apply_guardrails(
 # ===== COMBINATION AND GOODNESS SCORING =====
 
 def combine_factors(
-    env: Dict[str, any],
-    supply_demand: Dict[str, any],
-    loyalty: Dict[str, any],
-    historical: Dict[str, any],
-    corporate_pressure: Dict[str, any]
+    env: Dict[str, Any],
+    supply_demand: Dict[str, Any],
+    loyalty: Dict[str, Any],
+    historical: Dict[str, Any],
+    corporate_pressure: Dict[str, Any]
 ) -> Dict[str, float]:
     """
     Combine individual factors into a single recommended adjustment and goodness score.

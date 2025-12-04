@@ -3,6 +3,8 @@ Main orchestrator for pricing recommendations.
 Integrates conceptual agents and LangChain reasoning.
 """
 import json
+import re
+import logging
 from typing import Dict, Any
 from app.models.recommendation import RecommendationRequest, RecommendationResponse, FactorReasoning
 from app.core.config import settings
@@ -33,7 +35,22 @@ async def orchestrate_pricing_recommendation(
     # Ensure datetime is serializable
     input_text = f"Please generate a pricing recommendation for this request: {json.dumps(req_dict, default=str)}"
     
-    result = await agent_executor.ainvoke({"input": input_text})
+    try:
+        result = await agent_executor.ainvoke({"input": input_text})
+    except Exception as e:
+        # Log error for debugging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Agent execution failed: {e}", exc_info=True)
+        
+        # Return a fallback response with basic factor calculations
+        # This ensures the API doesn't crash during demo
+        from app.services.recommendation_service import build_recommendation
+        fallback_response = build_recommendation(req)
+        fallback_response.overall_reasoning = (
+            f"AI reasoning temporarily unavailable. "
+            f"Recommendation based on factor analysis: {fallback_response.overall_reasoning}"
+        )
+        return fallback_response
     
     # 3. Extract data from intermediate steps
     # AgentExecutor returns intermediate_steps as a list of (AgentAction, observation) tuples
@@ -96,10 +113,14 @@ async def orchestrate_pricing_recommendation(
     # First, try to extract from individual messages
     last_tool_key = None
     for i, msg in enumerate(messages):
-        if hasattr(msg, 'content') and msg.content:
-            content = msg.content if isinstance(msg.content, str) else str(msg.content)
-            
-            # Look for structured reasoning markers
+        if not hasattr(msg, 'content') or not msg.content:
+            continue
+        
+        content = msg.content if isinstance(msg.content, str) else str(msg.content)
+        if not content or len(content) < 10:  # Skip empty or very short content
+            continue
+
+        # Look for structured reasoning markers
             for marker, key in reasoning_markers.items():
                 if marker in content.upper() and key not in factor_reasoning:
                     # Extract reasoning after the marker
@@ -144,7 +165,6 @@ async def orchestrate_pricing_recommendation(
                 "corporate_pressure": [r"corporate pressure", r"corporate", r"revenue.*q4", r"revenue goals"]
             }
             
-            import re
             # Split by sentences
             sentences = re.split(r'[.!?]+', overall_reasoning_text)
             
