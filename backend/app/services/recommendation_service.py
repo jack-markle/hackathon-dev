@@ -10,9 +10,105 @@ This module implements the five conceptual pricing factors:
 
 It also applies ethical and market-based guardrails.
 """
-from typing import Dict, Any
+import json
+import logging
+from pathlib import Path
+from typing import Dict, Any, Optional
 from datetime import datetime
+import pandas as pd
+
 from app.models.recommendation import RecommendationRequest, RecommendationResponse
+
+logger = logging.getLogger(__name__)
+
+# ===== DATA LOADER =====
+
+class DataLoader:
+    """
+    Loads and caches mock data files and historical CSV data.
+    Data is loaded once at module initialization and cached for performance.
+    """
+    def __init__(self):
+        self.loyalty_data: Optional[Dict[str, Any]] = None
+        self.corporate_strategies: Optional[Dict[str, Any]] = None
+        self.zone_patterns: Optional[Dict[str, Any]] = None
+        self.historical_df: Optional[pd.DataFrame] = None
+        self._load_data()
+    
+    def _get_data_path(self, filename: str) -> Path:
+        """Get absolute path to data file relative to backend directory."""
+        # backend/app/services/recommendation_service.py -> backend -> project root -> data
+        backend_dir = Path(__file__).parent.parent.parent
+        project_root = backend_dir.parent
+        return project_root / "data" / filename
+    
+    def _load_data(self):
+        """Load all data files and cache them."""
+        try:
+            # Load loyalty distributions JSON
+            loyalty_path = self._get_data_path("mock_data/loyalty_distributions.json")
+            if loyalty_path.exists():
+                with open(loyalty_path, 'r') as f:
+                    self.loyalty_data = json.load(f)
+                logger.info(f"Loaded loyalty distributions from {loyalty_path}")
+            else:
+                logger.warning(f"Loyalty distributions file not found: {loyalty_path}")
+            
+            # Load corporate strategies JSON
+            corporate_path = self._get_data_path("mock_data/corporate_strategies.json")
+            if corporate_path.exists():
+                with open(corporate_path, 'r') as f:
+                    self.corporate_strategies = json.load(f)
+                logger.info(f"Loaded corporate strategies from {corporate_path}")
+            else:
+                logger.warning(f"Corporate strategies file not found: {corporate_path}")
+            
+            # Load zone historical patterns JSON
+            zone_patterns_path = self._get_data_path("mock_data/zone_historical_patterns.json")
+            if zone_patterns_path.exists():
+                with open(zone_patterns_path, 'r') as f:
+                    self.zone_patterns = json.load(f)
+                logger.info(f"Loaded zone historical patterns from {zone_patterns_path}")
+            else:
+                logger.warning(f"Zone historical patterns file not found: {zone_patterns_path}")
+            
+            # Load historical CSV
+            csv_path = self._get_data_path("dynamic_pricing - dynamic_pricing.csv")
+            if csv_path.exists():
+                self.historical_df = pd.read_csv(csv_path)
+                logger.info(f"Loaded historical CSV with {len(self.historical_df)} records from {csv_path}")
+            else:
+                logger.warning(f"Historical CSV file not found: {csv_path}")
+                
+        except Exception as e:
+            logger.error(f"Error loading data files: {e}", exc_info=True)
+            # Continue with None values - functions will fall back to hardcoded logic
+    
+    def get_loyalty_discounts(self) -> Dict[str, float]:
+        """Get loyalty discount mappings from loaded data."""
+        if self.loyalty_data and "loyalty_discounts" in self.loyalty_data:
+            return self.loyalty_data["loyalty_discounts"]
+        return {}
+    
+    def get_corporate_strategy(self, strategy_key: str) -> Optional[Dict[str, Any]]:
+        """Get corporate strategy by key from loaded data."""
+        if self.corporate_strategies and "strategies" in self.corporate_strategies:
+            return self.corporate_strategies["strategies"].get(strategy_key)
+        return None
+    
+    def get_zone_pattern(self, zone: str) -> Optional[Dict[str, Any]]:
+        """Get historical pattern for a zone from loaded data."""
+        if self.zone_patterns and "zones" in self.zone_patterns:
+            return self.zone_patterns["zones"].get(zone.lower())
+        return None
+    
+    def get_historical_dataframe(self) -> Optional[pd.DataFrame]:
+        """Get the loaded historical CSV DataFrame."""
+        return self.historical_df
+
+
+# Initialize data loader at module level (cached)
+_data_loader = DataLoader()
 
 
 # ===== FACTOR COMPUTATION FUNCTIONS =====
@@ -142,24 +238,34 @@ def compute_loyalty_factor(req: RecommendationRequest) -> Dict[str, Any]:
     
     Loyal customers receive preferential treatment and softer surge pricing.
     Returns a factor adjustment (typically negative) and summary.
+    Uses data from loyalty_distributions.json if available, falls back to hardcoded values.
     """
     loyalty = (req.loyalty_segment or "standard").lower()
     
-    # Platinum tier - highest loyalty
+    # Try to get discount from loaded data
+    loyalty_discounts = _data_loader.get_loyalty_discounts()
+    
+    if loyalty_discounts and loyalty in loyalty_discounts:
+        discount = loyalty_discounts[loyalty]
+        discount_pct = abs(discount) * 100
+        return {
+            "factor": discount,
+            "summary": f"{loyalty.capitalize()} member receives loyalty discount ({discount_pct:.0f}% reduction)."
+        }
+    
+    # Fallback to hardcoded logic if data not available
     if loyalty == "platinum":
         return {
             "factor": -0.10,
             "summary": "Platinum member receives premium loyalty discount (-10%)."
         }
     
-    # Gold tier - strong loyalty
     if loyalty == "gold":
         return {
             "factor": -0.05,
             "summary": "Gold member receives loyalty discount and softened surge (-5%)."
         }
     
-    # Silver tier - moderate loyalty
     if loyalty == "silver":
         return {
             "factor": -0.03,
@@ -173,64 +279,164 @@ def compute_loyalty_factor(req: RecommendationRequest) -> Dict[str, Any]:
     }
 
 
+def _map_app_zone_to_csv_location(zone: str) -> Optional[str]:
+    """Map application zone names to CSV Location_Category values."""
+    zone_lower = zone.lower()
+    if "airport" in zone_lower or "downtown" in zone_lower or "urban" in zone_lower:
+        return "Urban"
+    elif "suburb" in zone_lower or "suburban" in zone_lower:
+        return "Suburban"
+    elif "rural" in zone_lower:
+        return "Rural"
+    return None
+
+
+def _extract_time_period_from_iso(time_str: str) -> Optional[str]:
+    """Extract time period (Morning, Afternoon, Evening, Night) from ISO timestamp."""
+    try:
+        time_obj = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
+        hour = time_obj.hour
+        
+        if 6 <= hour < 12:
+            return "Morning"
+        elif 12 <= hour < 17:
+            return "Afternoon"
+        elif 17 <= hour < 21:
+            return "Evening"
+        else:  # 21-23 or 0-5
+            return "Night"
+    except:
+        return None
+
+
+def _get_pattern_multiplier(zone_pattern: Dict[str, Any], time_period: str, scenario: str) -> float:
+    """Get multiplier from zone patterns JSON based on time period and scenario."""
+    if not zone_pattern:
+        return 1.0
+    
+    # Get time-of-day multiplier
+    time_multiplier = 1.0
+    if "time_of_day_multipliers" in zone_pattern:
+        for period_name, period_data in zone_pattern["time_of_day_multipliers"].items():
+            if period_name.lower() == time_period.lower():
+                time_multiplier = period_data.get("base_multiplier", 1.0)
+                break
+    
+    # Get scenario multiplier
+    scenario_multiplier = 1.0
+    if "scenario_multipliers" in zone_pattern:
+        scenario_multiplier = zone_pattern["scenario_multipliers"].get(scenario.lower(), 1.0)
+    
+    # Combine multipliers (cumulative as per JSON notes)
+    combined_multiplier = time_multiplier * scenario_multiplier
+    
+    # Convert to adjustment factor (multiplier - 1.0)
+    return combined_multiplier - 1.0
+
+
 def compute_historical_factor(req: RecommendationRequest) -> Dict[str, Any]:
     """
     Compute adjustment based on historical pricing patterns.
     
-    In production, this would query actual historical data.
-    For the hackathon demo, we use heuristics based on zone and scenario.
+    Uses zone_historical_patterns.json for pattern-based multipliers and
+    dynamic_pricing.csv for data-driven historical analysis.
+    Blends both sources for a comprehensive historical factor.
     """
     origin_zone = req.origin_zone.lower()
     destination_zone = req.destination_zone.lower()
     scenario = req.scenario.lower()
     
-    # Airport corridor historical patterns (check destination primarily)
-    if "airport" in destination_zone:
-        if scenario in ["normal", "road_closure"]:
-            return {
-                "factor": 0.05,
-                "summary": "Historical data shows airport trips typically succeed at 1.05x base price."
-            }
-        return {
-            "factor": 0.08,
-            "summary": "Historical airport demand during events suggests +8% pricing."
-        }
+    # Step A: Get pattern-based multiplier from JSON
+    pattern_factor = 0.0
+    pattern_summary = ""
     
-    # Downtown historical patterns (check both origin and destination)
-    if "downtown" in origin_zone or "downtown" in destination_zone:
-        if scenario in ["concert", "sports_event"]:
-            return {
-                "factor": 0.10,
-                "summary": "Historical event data in downtown shows strong acceptance at +10%."
-            }
-        return {
-            "factor": 0.03,
-            "summary": "Historical downtown patterns suggest modest +3% adjustment."
-        }
+    # Try to get zone pattern (prefer destination zone, fallback to origin)
+    zone_pattern = _data_loader.get_zone_pattern(destination_zone)
+    if not zone_pattern:
+        zone_pattern = _data_loader.get_zone_pattern(origin_zone)
     
-    # Stadium/venue zones (check both origin and destination)
-    if "stadium" in origin_zone or "venue" in origin_zone or "stadium" in destination_zone or "venue" in destination_zone:
-        if scenario in ["concert", "sports_event"]:
-            return {
-                "factor": 0.15,
-                "summary": "Historical venue event data supports +15% pricing."
-            }
-        return {
-            "factor": 0.0,
-            "summary": "Historical data shows standard pricing for non-event periods."
-        }
+    time_period = _extract_time_period_from_iso(req.time)
     
-    # Suburban areas (check both origin and destination)
-    if "suburb" in origin_zone or "suburb" in destination_zone:
-        return {
-            "factor": 0.0,
-            "summary": "Historical suburban patterns show stable pricing (no adjustment)."
-        }
+    if zone_pattern and time_period:
+        pattern_factor = _get_pattern_multiplier(zone_pattern, time_period, scenario)
+        pattern_summary = f"Pattern-based analysis suggests {pattern_factor*100:+.0f}% adjustment"
+    else:
+        # Fallback to hardcoded logic if patterns not available
+        if "airport" in destination_zone:
+            pattern_factor = 0.05 if scenario in ["normal", "road_closure"] else 0.08
+            pattern_summary = "Airport corridor historical patterns"
+        elif "downtown" in origin_zone or "downtown" in destination_zone:
+            pattern_factor = 0.10 if scenario in ["concert", "sports_event"] else 0.03
+            pattern_summary = "Downtown historical patterns"
+        elif "stadium" in origin_zone or "venue" in origin_zone or "stadium" in destination_zone or "venue" in destination_zone:
+            pattern_factor = 0.15 if scenario in ["concert", "sports_event"] else 0.0
+            pattern_summary = "Stadium/venue historical patterns"
+        elif "suburb" in origin_zone or "suburb" in destination_zone:
+            pattern_factor = 0.0
+            pattern_summary = "Suburban historical patterns"
+        else:
+            pattern_factor = 0.02
+            pattern_summary = "Default historical patterns"
     
-    # Default for unrecognized zones
+    # Step B: Get data-driven metric from CSV
+    csv_factor = 0.0
+    csv_summary = ""
+    historical_df = _data_loader.get_historical_dataframe()
+    
+    if historical_df is not None and not historical_df.empty:
+        try:
+            # Map zones to CSV Location_Category
+            origin_location = _map_app_zone_to_csv_location(req.origin_zone)
+            dest_location = _map_app_zone_to_csv_location(req.destination_zone)
+            
+            # Filter CSV data
+            filtered_df = historical_df.copy()
+            
+            # Filter by location (check both origin and destination mappings)
+            if origin_location or dest_location:
+                location_filter = False
+                if origin_location:
+                    location_filter = (filtered_df["Location_Category"] == origin_location)
+                if dest_location:
+                    location_filter = location_filter | (filtered_df["Location_Category"] == dest_location)
+                filtered_df = filtered_df[location_filter]
+            
+            # Filter by time period if available
+            if time_period:
+                filtered_df = filtered_df[filtered_df["Time_of_Booking"] == time_period]
+            
+            if not filtered_df.empty and "Historical_Cost_of_Ride" in filtered_df.columns:
+                # Calculate average cost for matching rides
+                avg_matching_cost = filtered_df["Historical_Cost_of_Ride"].mean()
+                
+                # Calculate average cost for all rides (baseline)
+                avg_all_cost = historical_df["Historical_Cost_of_Ride"].mean()
+                
+                if avg_all_cost > 0:
+                    # Calculate surge metric: (matching_avg / all_avg) - 1.0
+                    csv_factor = (avg_matching_cost / avg_all_cost) - 1.0
+                    csv_summary = f"CSV data shows {csv_factor*100:+.1f}% historical surge for similar rides"
+                else:
+                    csv_summary = "CSV data available but baseline cost is zero"
+            else:
+                csv_summary = "No matching CSV records found for this zone/time combination"
+        except Exception as e:
+            logger.warning(f"Error processing CSV data: {e}", exc_info=True)
+            csv_summary = "CSV data processing error"
+    
+    # Step C: Blend pattern-based and CSV-based factors
+    # Weight: 60% pattern (from JSON), 40% CSV data
+    blended_factor = (pattern_factor * 0.6) + (csv_factor * 0.4)
+    
+    # Build summary
+    if csv_summary:
+        summary = f"{pattern_summary}. {csv_summary}. Blended historical factor: {blended_factor*100:+.1f}%"
+    else:
+        summary = f"{pattern_summary}. Historical factor: {pattern_factor*100:+.1f}%"
+    
     return {
-        "factor": 0.02,
-        "summary": "Historical patterns suggest slight upward adjustment (+2%)."
+        "factor": round(blended_factor, 3),
+        "summary": summary
     }
 
 
@@ -241,6 +447,7 @@ def compute_corporate_pressure_factor(req: RecommendationRequest) -> Dict[str, A
     This is a SOFT factor that nudges pricing but CANNOT override
     market physics (supply/demand) or ethical guardrails (emergencies).
     
+    Uses corporate_strategies.json if available to validate strategy notes and adjust factors.
     Returns a factor adjustment and summary.
     """
     if req.corporate_revenue_goal is None:
@@ -252,15 +459,37 @@ def compute_corporate_pressure_factor(req: RecommendationRequest) -> Dict[str, A
     # Corporate goal is expressed as a target uplift (e.g., 0.15 = 15% revenue increase goal)
     goal = req.corporate_revenue_goal
     
+    # Try to match strategy notes to a predefined strategy
+    matched_strategy = None
+    strategy_note = ""
+    
+    if req.corporate_strategy_notes:
+        strategy_notes_lower = req.corporate_strategy_notes.lower()
+        # Check if strategy notes match any predefined strategy key
+        if _data_loader.corporate_strategies and "strategies" in _data_loader.corporate_strategies:
+            for strategy_key, strategy_data in _data_loader.corporate_strategies["strategies"].items():
+                # Check if strategy key or description appears in notes
+                if strategy_key.replace("_", " ") in strategy_notes_lower or \
+                   (isinstance(strategy_data, dict) and 
+                    strategy_data.get("strategy_notes", "").lower() in strategy_notes_lower):
+                    matched_strategy = strategy_data
+                    break
+        
+        # Include strategy notes in summary (truncate if too long)
+        strategy_note = f" Strategy: {req.corporate_strategy_notes[:80]}..."
+    
+    # If we matched a strategy, validate goal against strategy's typical range
+    if matched_strategy and "typical_goal" in matched_strategy:
+        typical_goal = matched_strategy["typical_goal"]
+        # If provided goal is significantly different from typical, use typical as reference
+        # but still respect the provided goal (just note the difference)
+        if abs(goal - typical_goal) > 0.05:
+            # Goal differs from typical - use provided goal but note it
+            strategy_note += f" (Typical for this strategy: {typical_goal*100:.0f}%)"
+    
     # Cap corporate pressure influence at reasonable levels
     # We don't let corporate pressure alone drive more than 8% adjustment
     capped_influence = min(goal, 0.08)
-    
-    # If there are strategy notes, include them in summary
-    strategy_note = ""
-    if req.corporate_strategy_notes:
-        # Truncate if too long
-        strategy_note = f" Strategy: {req.corporate_strategy_notes[:80]}..."
     
     if goal > 0.15:
         return {
@@ -280,7 +509,7 @@ def compute_corporate_pressure_factor(req: RecommendationRequest) -> Dict[str, A
     else:
         return {
             "factor": 0.0,
-            "summary": "No positive revenue target set (no corporate pressure).{strategy_note}"
+            "summary": f"No positive revenue target set (no corporate pressure).{strategy_note}"
         }
 
 
