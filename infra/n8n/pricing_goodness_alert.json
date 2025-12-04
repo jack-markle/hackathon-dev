@@ -1,0 +1,202 @@
+{
+  "name": "pricing_goodness_alert",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "condition-goodness-threshold",
+              "leftValue": "={{ $json.body.goodness }}",
+              "rightValue": 0.7,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            },
+            {
+              "id": "condition-emergency-flag",
+              "leftValue": "={{ $json.body.flags }}",
+              "rightValue": "emergency",
+              "operator": {
+                "type": "array",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "condition-high-surge-flag",
+              "leftValue": "={{ $json.body.flags }}",
+              "rightValue": "high_surge",
+              "operator": {
+                "type": "array",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "condition-corporate-overruled-flag",
+              "leftValue": "={{ $json.body.flags }}",
+              "rightValue": "corporate_overruled_by_guardrails",
+              "operator": {
+                "type": "array",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        48,
+        128
+      ],
+      "id": "b03ca643-3152-4b9d-a82b-494cd55d2e73",
+      "name": "Check Alert Conditions"
+    },
+    {
+      "parameters": {
+        "sendTo": "tmluongx@gmail.com",
+        "subject": "=🚨 Pricing Alert: Review recommendation for {{ $json.body.origin_zone }} → {{ $json.body.destination_zone }}",
+        "message": "=**Pricing Goodness Alert**\n<br><br>\n\n---\n<br><br>\n**Route:** {{ $json.body.origin_zone }} → {{ $json.body.destination_zone }} <br>\n**Primary Scenario:** {{ $json.body.scenario }} <br>\n**All Scenarios:** {{ $json.body.scenarios && $json.body.scenarios.length > 0 ? $json.body.scenarios.join(', ') : 'N/A' }} <br>\n**Time:** {{ $json.body.time }} <br>\n**Loyalty Segment:** {{ $json.body.loyalty_segment || 'N/A' }} <br>\n**Recommended Adjustment:** {{ ($json.body.recommended_adjustment * 100).toFixed(1) }}% <br>\n**Goodness Score:** {{ ($json.body.goodness * 100).toFixed(1) }}%\n<br><br>\n---\n<br><br>\n**Corporate Pressure:**<br>\n• Revenue Goal: {{ $json.body.corporate_revenue_goal ? ($json.body.corporate_revenue_goal * 100).toFixed(1) + '%' : 'N/A' }}<br>\n• Strategy Notes: {{ $json.body.corporate_strategy_notes || 'None' }}\n<br><br>\n---\n<br><br>\n**Risk Flags:**<br>\n{{ $json.body.flags && $json.body.flags.length > 0 ? $json.body.flags.map(f => '• ' + f).join('<br>') : 'None' }}\n<br><br>\n---\n<br><br>\n**Analyst Notes:**<br>\n{{ $json.body.notes || 'No additional notes provided.' }}\n<br><br>\n---\n<br><br>\n⚠️ This alert was triggered because:<br>\n{{ $json.body.goodness < 0.7 ? '• Goodness score is below 70% threshold.<br>' : '' }}{{ $json.body.flags && $json.body.flags.includes('emergency') ? '• Emergency scenario detected<br>' : '' }}{{ $json.body.flags && $json.body.flags.includes('high_surge') ? '• High surge pricing detected<br>' : '' }}{{ $json.body.flags && $json.body.flags.includes('corporate_overruled_by_guardrails') ? '• Corporate pressure was overruled by guardrails<br>' : '' }}\n<br><br>\nPlease review this recommendation before it affects customers at scale.",
+        "options": {
+          "senderName": "RideFlow"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        336,
+        32
+      ],
+      "id": "ae48bf97-fd59-4402-ac91-854d4778c0d5",
+      "name": "Send Alert Email",
+      "webhookId": "ee8aafff-b992-48b1-be76-6a2f42867ca3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Clc3gTooGfpsZkaM",
+          "name": "Gmail account 4"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        336,
+        240
+      ],
+      "id": "edcd1c5e-65c3-4547-9095-6e3b166b01a3",
+      "name": "No Alert Needed"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "4c575b52-6e76-47bb-9ba0-4b2e6c20a942",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -272,
+        128
+      ],
+      "id": "599e4eed-0a09-4cee-b2c1-cfe4040d00a9",
+      "name": "Webhook1",
+      "webhookId": "4c575b52-6e76-47bb-9ba0-4b2e6c20a942"
+    }
+  ],
+  "pinData": {
+    "Webhook1": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.srv1088472.hstgr.cloud",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0",
+            "content-length": "288",
+            "accept": "application/json",
+            "accept-encoding": "deflate, gzip",
+            "content-type": "application/json",
+            "x-forwarded-for": "64.227.21.251",
+            "x-forwarded-host": "n8n.srv1088472.hstgr.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "6417df811438",
+            "x-real-ip": "64.227.21.251"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "origin_zone": "downtown",
+            "destination_zone": "airport_corridor",
+            "recommended_adjustment": 0.2,
+            "goodness": 0.62,
+            "flags": [
+              "high_surge",
+              "corporate_overruled_by_guardrails"
+            ],
+            "scenarios": ["storm", "road_closure"],
+            "scenario": "storm",
+            "time": "2024-01-15T14:30:00.000Z",
+            "loyalty_segment": "gold",
+            "notes": "Storm expected to reduce driver availability by 40%.",
+            "corporate_revenue_goal": 0.03,
+            "corporate_strategy_notes": "Q4 revenue push"
+          },
+          "webhookUrl": "https://n8n.srv1088472.hstgr.cloud/webhook-test/4c575b52-6e76-47bb-9ba0-4b2e6c20a942",
+          "executionMode": "test"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Check Alert Conditions": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Alert Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Check Alert Conditions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "bec968d0-33c2-4685-8307-25d58417fb90",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b3990042b7679ab9eb48637e73a242f5cc194803d733e21dfe2db4948271c579"
+  },
+  "id": "7PBVqP5iciInSDpH",
+  "tags": []
+}
