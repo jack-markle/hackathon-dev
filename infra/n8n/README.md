@@ -28,14 +28,13 @@ Webhook (POST) → Check Alert Conditions (IF) → Send Alert Email (Gmail)
 - **Logic:** OR combinator
 - **Conditions:**
   - `goodness < 0.7` (below 70% threshold)
-  - `flags` contains `"emergency"`
-  - `flags` contains `"high_surge"`
-  - `flags` contains `"corporate_overruled_by_guardrails"`
+  - `flags` array is not empty (ANY flags present)
 
 ### 3. Send Alert Email (Gmail Node)
 - **Type:** `n8n-nodes-base.gmail`
 - **Triggered when:** Any alert condition is met (true branch)
-- **Recipient:** tmluongx@gmail.com
+- **Recipient:** Dynamic - uses `email_address` field from payload
+- **Sender Name:** RideFlow
 - **Subject:** `🚨 Pricing Alert: Review recommendation for {origin_zone} → {destination_zone}`
 
 ### 4. No Alert Needed (NoOp Node)
@@ -59,7 +58,8 @@ The webhook expects a JSON payload with the following structure:
   "loyalty_segment": "gold",
   "notes": "Storm expected to reduce driver availability by 40%.",
   "corporate_revenue_goal": 0.03,
-  "corporate_strategy_notes": "Q4 revenue push"
+  "corporate_strategy_notes": "Q4 revenue push",
+  "email_address": "analyst@rideflow.com"
 }
 ```
 
@@ -79,6 +79,7 @@ The webhook expects a JSON payload with the following structure:
 | `recommended_adjustment` | number | Price adjustment as decimal | 0.2 (20%), -0.1 (-10%) |
 | `goodness` | number | Quality score [0.0-1.0] | 0.62 (62%) |
 | `flags` | array | Risk flags | ["emergency", "high_surge", "corporate_overruled_by_guardrails"] |
+| `email_address` | string | Email recipient for alert | "analyst@rideflow.com", "manager@rideflow.com" |
 
 ## Email Alert Content
 
@@ -131,9 +132,8 @@ Storm expected to reduce driver availability by 40%.
 ---
 
 ⚠️ This alert was triggered because:
-• Goodness score is below 70% threshold.
-• High surge pricing detected
-• Corporate pressure was overruled by guardrails
+• Goodness score is below 70% threshold
+• Risk flags are present
 
 Please review this recommendation before it affects customers at scale.
 ```
@@ -157,9 +157,14 @@ Please review this recommendation before it affects customers at scale.
 
 ### 3. Update Email Recipient
 
+The workflow now uses a **dynamic email recipient** from the payload:
+- The `email_address` field in the payload determines who receives the alert
+- No need to hardcode the recipient in the workflow
+- Each request can specify a different recipient
+
+If you want to override this and use a fixed email address:
 1. In the **Send Alert Email** node
-2. Update the `sendTo` parameter with your email address
-3. Optionally update `senderName` (currently "RideFlow")
+2. Change `sendTo` from `={{ $json.body.email_address }}` to a fixed email like `"your-email@example.com"`
 
 ### 4. Activate the Workflow
 
@@ -205,7 +210,8 @@ async def send_pricing_alert(payload: Dict[str, Any], webhook_url: str) -> None:
   "loyalty_segment": "gold",
   "notes": "Storm expected to reduce driver availability by 40%.",
   "corporate_revenue_goal": 0.03,
-  "corporate_strategy_notes": "Q4 revenue push"
+  "corporate_strategy_notes": "Q4 revenue push",
+  "email_address": "analyst@rideflow.com"
 }
 ```
 
@@ -224,7 +230,8 @@ async def send_pricing_alert(payload: Dict[str, Any], webhook_url: str) -> None:
   "loyalty_segment": "silver",
   "notes": "Regular morning commute",
   "corporate_revenue_goal": 0.02,
-  "corporate_strategy_notes": "Standard pricing"
+  "corporate_strategy_notes": "Standard pricing",
+  "email_address": "analyst@rideflow.com"
 }
 ```
 
