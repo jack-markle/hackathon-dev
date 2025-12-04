@@ -9,6 +9,7 @@ from typing import Dict, Any
 from app.models.recommendation import RecommendationRequest, RecommendationResponse, FactorReasoning
 from app.core.config import settings
 from app.orchestration.orchestrator_agent import build_orchestrator_agent
+from app.integrations.n8n_notifier import send_pricing_alert
 
 async def orchestrate_pricing_recommendation(
     req: RecommendationRequest,
@@ -50,6 +51,22 @@ async def orchestrate_pricing_recommendation(
             f"AI reasoning temporarily unavailable. "
             f"Recommendation based on factor analysis: {fallback_response.overall_reasoning}"
         )
+        
+        # Attempt to send alert even in fallback mode
+        try:
+            flags = []
+            if "guardrails" in fallback_response.factors:
+                flags = fallback_response.factors["guardrails"].split(" | ")
+            
+            await send_pricing_alert(
+                req=req,
+                adjustment=fallback_response.recommended_adjustment,
+                goodness=fallback_response.goodness,
+                flags=flags
+            )
+        except Exception:
+            pass # Don't let alert failure block response
+            
         return fallback_response
     
     # 3. Extract data from intermediate steps
@@ -110,6 +127,56 @@ async def orchestrate_pricing_recommendation(
         "CORPORATE_PRESSURE_REASONING": "corporate_pressure"
     }
     
+    # Helper function to extract reasoning from text
+    def extract_reasoning_from_text(text: str, markers: dict, existing_reasoning: dict) -> dict:
+        """Extract factor reasoning from text using markers."""
+        # Check for each marker (case-insensitive)
+        for marker, key in markers.items():
+            if key in existing_reasoning:
+                continue  # Already extracted
+            
+            # Try both uppercase and original case
+            marker_variants = [marker, marker.upper(), marker.lower()]
+            for marker_variant in marker_variants:
+                if marker_variant + ":" in text.upper():
+                    # Find the marker in the text (case-insensitive)
+                    pattern = re.compile(re.escape(marker_variant) + ":", re.IGNORECASE)
+                    match = pattern.search(text)
+                    if match:
+                        # Extract text after the marker
+                        start_pos = match.end()
+                        reasoning_text = text[start_pos:].strip()
+                        
+                        # Find the next marker or end of text
+                        next_marker_pos = len(reasoning_text)
+                        for other_marker, _ in markers.items():
+                            if other_marker != marker:
+                                other_pattern = re.compile(re.escape(other_marker) + ":", re.IGNORECASE)
+                                other_match = other_pattern.search(reasoning_text)
+                                if other_match and other_match.start() < next_marker_pos:
+                                    next_marker_pos = other_match.start()
+                        
+                        # Also check for OVERALL_REASONING marker
+                        overall_match = re.compile(r"OVERALL_REASONING:", re.IGNORECASE).search(reasoning_text)
+                        if overall_match and overall_match.start() < next_marker_pos:
+                            next_marker_pos = overall_match.start()
+                        
+                        reasoning_text = reasoning_text[:next_marker_pos].strip()
+                        
+                        # Clean up - take first 2 sentences or 300 chars
+                        sentences = re.split(r'[.!?]+', reasoning_text)
+                        if len(sentences) > 2:
+                            reasoning_text = ". ".join(sentences[:2]).strip()
+                            if reasoning_text and not reasoning_text.endswith('.'):
+                                reasoning_text += "."
+                        else:
+                            reasoning_text = reasoning_text[:300].strip()
+                        
+                        if reasoning_text and len(reasoning_text) > 10:
+                            existing_reasoning[key] = reasoning_text
+                            break  # Found it, move to next marker
+        return existing_reasoning
+    
     # First, try to extract from individual messages
     last_tool_key = None
     for i, msg in enumerate(messages):
@@ -121,24 +188,12 @@ async def orchestrate_pricing_recommendation(
             continue
 
         # Look for structured reasoning markers
-            for marker, key in reasoning_markers.items():
-                if marker in content.upper() and key not in factor_reasoning:
-                    # Extract reasoning after the marker
-                    parts = content.upper().split(marker + ":", 1)
-                    if len(parts) > 1:
-                        reasoning_text = parts[1].strip()
-                        # Take up to next marker or reasonable length
-                        for other_marker in reasoning_markers:
-                            if other_marker in reasoning_text:
-                                reasoning_text = reasoning_text.split(other_marker, 1)[0].strip()
-                        # Clean up - take first 2 sentences or 300 chars
-                        sentences = reasoning_text.split(".")
-                        if len(sentences) > 2:
-                            reasoning_text = ". ".join(sentences[:2]) + "."
-                        else:
-                            reasoning_text = reasoning_text[:300]
-                        if reasoning_text and len(reasoning_text) > 10:
-                            factor_reasoning[key] = reasoning_text.strip()
+        factor_reasoning = extract_reasoning_from_text(content, reasoning_markers, factor_reasoning)
+    
+    # Also check the final output string for reasoning markers (they might be there)
+    output_text = result.get("output", "")
+    if output_text:
+        factor_reasoning = extract_reasoning_from_text(output_text, reasoning_markers, factor_reasoning)
     
     # If we didn't get individual reasoning, try to parse from the overall reasoning
     # Look for factor mentions in the overall reasoning
@@ -223,6 +278,14 @@ async def orchestrate_pricing_recommendation(
     )
 
     # 6. Return complete response
+    # Send alert to n8n (fire and forget / non-blocking ideally, but await here is fine for now)
+    await send_pricing_alert(
+        req=req,
+        adjustment=round(final_adjustment, 2),
+        goodness=round(goodness, 2),
+        flags=guardrail_flags
+    )
+
     return RecommendationResponse(
         recommended_adjustment=round(final_adjustment, 2),
         goodness=round(goodness, 2),
