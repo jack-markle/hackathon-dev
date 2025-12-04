@@ -1,0 +1,88 @@
+{
+  "_comment": "MOCK/DEMO ONLY - NOT PRODUCTION DATA",
+  "_description": "Customer loyalty segment distributions per zone. Used by historical agent for context-aware recommendations.",
+  "_usage": "These distributions represent typical customer mix in each zone, helping inform loyalty-aware pricing strategies.",
+  
+  "zone_loyalty_distributions": {
+    "airport_corridor": {
+      "_description": "Airport travelers - mix of business and leisure, higher loyalty rates",
+      "platinum": 0.18,
+      "gold": 0.28,
+      "silver": 0.32,
+      "standard": 0.22,
+      "_notes": "Business travelers often have higher loyalty tiers"
+    },
+    
+    "downtown": {
+      "_description": "Downtown urban core - diverse customer base",
+      "platinum": 0.12,
+      "gold": 0.22,
+      "silver": 0.35,
+      "standard": 0.31,
+      "_notes": "Mix of regular commuters and occasional users"
+    },
+    
+    "stadium": {
+      "_description": "Stadium/venue - event-driven, occasional users dominate",
+      "platinum": 0.08,
+      "gold": 0.15,
+      "silver": 0.25,
+      "standard": 0.52,
+      "_notes": "Many first-time or infrequent event-goers"
+    },
+    
+    "suburbs": {
+      "_description": "Suburban zones - regular commuters, higher loyalty",
+      "platinum": 0.15,
+      "gold": 0.30,
+      "silver": 0.38,
+      "standard": 0.17,
+      "_notes": "Regular commuters build loyalty over time"
+    },
+    
+    "venue": {
+      "_description": "Generic venue - similar to stadium but slightly more regular users",
+      "platinum": 0.10,
+      "gold": 0.18,
+      "silver": 0.28,
+      "standard": 0.44,
+      "_notes": "Mix of event-goers and regular venue visitors"
+    }
+  },
+  
+  "loyalty_discounts": {
+    "_description": "Standard discount percentages applied per loyalty tier",
+    "platinum": -0.10,
+    "gold": -0.05,
+    "silver": -0.03,
+    "standard": 0.0,
+    "_notes": "Negative values indicate discounts (reductions in surge pricing)"
+  },
+  
+  "loyalty_guardrails": {
+    "_description": "Additional surge caps for loyal customers",
+    "platinum": {
+      "max_surge_cap": 0.15,
+      "description": "Platinum members never pay more than +15% surge"
+    },
+    "gold": {
+      "max_surge_cap": 0.18,
+      "description": "Gold members capped at +18% surge"
+    },
+    "silver": {
+      "max_surge_cap": 0.20,
+      "description": "Silver members capped at +20% surge"
+    },
+    "standard": {
+      "max_surge_cap": 1.0,
+      "description": "Standard members follow normal surge rules"
+    }
+  },
+  
+  "_usage_examples": [
+    "When computing historical factor, use zone distribution to weight recommendations",
+    "Example: airport_corridor has 18% platinum, so historical patterns should account for loyalty discounts",
+    "Loyalty discounts are applied AFTER computing base surge, then guardrails cap the final amount"
+  ]
+}
+
