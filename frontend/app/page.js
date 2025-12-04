@@ -138,43 +138,27 @@ export default function Home() {
     console.log('Payload:', payload);
 
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // const response = await fetch('/api/recommendation', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(payload)
-      // });
-      // 
-      // if (!response.ok) {
-      //   const errorData = await response.json().catch(() => ({ message: 'Failed to get recommendation' }));
-      //   throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      // }
-      // 
-      // const data = await response.json();
-      // showResults(data);
-
-      // Simulate API call with occasional errors for testing
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          // Simulate 10% error rate for demo purposes
-          if (Math.random() < 0.1) {
-            reject(new Error('Network error: Unable to connect to recommendation service. Please try again.'));
-          } else {
-            resolve();
-          }
-        }, 2500);
+      // Call backend API
+      const response = await fetch('http://localhost:8000/api/v1/recommendation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-
-      // Simulate successful response processing
-      // For multiple scenarios, use the highest adjustment (most impactful scenario)
-      const scenarioResults = selectedScenarios.map(key => adjustments[key] || adjustments.normal_day);
-      const maxAdjustment = Math.max(...scenarioResults.map(r => r.adjustment));
-      const avgGoodness = scenarioResults.reduce((sum, r) => sum + r.goodness, 0) / scenarioResults.length;
       
-      const adjustment = maxAdjustment;
-      const goodness = avgGoodness;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to get recommendation' }));
+        throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Map backend response to frontend state structure
+      // Backend returns: recommended_adjustment, goodness, overall_reasoning, factors, factor_reasoning
+      const adjustment = data.recommended_adjustment || 0;
+      const goodness = data.goodness || 0;
       const newPrice = currentPrice * (1 + adjustment);
 
+      // Calculate goodness label and colors based on goodness score
       let goodnessLabel, goodnessColor, circleColor;
       if (goodness >= 0.8) {
         goodnessLabel = 'Excellent';
@@ -190,9 +174,34 @@ export default function Home() {
         circleColor = '#ef4444';
       }
 
-      const scenarioLabels = selectedScenarios.map(key => scenarios[key].label.toLowerCase()).join(' and ');
-      const routeLabel = `${zones[originZone].label} → ${zones[currentZone].label}`;
-      const reasoning = `Based on current ${scenarioLabels} conditions for the route ${routeLabel}, I recommend a ${Math.round(adjustment * 100)}% price adjustment. This balances the observed demand surge with customer retention priorities, particularly considering the ${revenueGoal}% revenue target outlined in corporate strategy. The adjustment stays within established ethical guardrails while optimizing for both profitability and market position. ${goodness >= 0.8 ? 'The high confidence score reflects strong historical precedent and favorable customer acceptance patterns for similar conditions.' : 'The moderate confidence reflects some uncertainty in demand patterns, suggesting close monitoring of customer response.'}`;
+      // Use backend's overall_reasoning, fallback to a default message if not provided
+      const reasoning = data.overall_reasoning || 'No reasoning provided.';
+
+      // Map factor_reasoning from backend to display format
+      const factorReasoning = data.factor_reasoning || {};
+      const factorMapping = {
+        environment: { title: 'Environmental Conditions', color: 'bg-red-500' },
+        supply_demand: { title: 'Supply & Demand', color: 'bg-amber-500' },
+        loyalty: { title: 'Customer Loyalty', color: 'bg-blue-500' },
+        historical: { title: 'Historical Data', color: 'bg-emerald-500' },
+        corporate_pressure: { title: 'Corporate Pressure', color: 'bg-purple-500' }
+      };
+
+      // Convert factor_reasoning object to array format for display
+      const mappedFactors = Object.entries(factorMapping)
+        .map(([key, config]) => {
+          const description = factorReasoning[key];
+          // Only include factors that have reasoning text
+          if (description && description.trim()) {
+            return {
+              title: config.title,
+              color: config.color,
+              description: description.trim()
+            };
+          }
+          return null;
+        })
+        .filter(factor => factor !== null); // Remove null entries
 
       setResults({
         adjustment,
@@ -201,7 +210,8 @@ export default function Home() {
         goodnessLabel,
         goodnessColor,
         circleColor,
-        reasoning
+        reasoning,
+        factors: mappedFactors
       });
       setIsLoading(false);
     } catch (err) {
@@ -212,7 +222,8 @@ export default function Home() {
     }
   };
 
-  const factors = [
+  // Default factors array (fallback if backend doesn't provide factor_reasoning)
+  const defaultFactors = [
     { color: 'bg-red-500', title: 'Environmental Conditions', description: 'Severe weather reducing driver availability by 35%' },
     { color: 'bg-amber-500', title: 'Supply & Demand', description: 'High demand zone with 1.8x typical requests during storm' },
     { color: 'bg-blue-500', title: 'Customer Loyalty', description: 'Gold-tier customer segment showing high price acceptance during emergencies' },
@@ -451,7 +462,7 @@ export default function Home() {
                   <select
                     value={loyaltySegment}
                     onChange={(e) => setLoyaltySegment(e.target.value)}
-                    className="w-full p-3 border-2 border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none bg-white text-sm font-semibold"
+                    className="w-full p-3 border-2 border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none bg-white text-sm font-semibold text-slate-800"
                   >
                     {Object.entries(loyaltySegments).map(([key, segment]) => (
                       <option key={key} value={key}>
@@ -521,7 +532,7 @@ export default function Home() {
                         type="number"
                         value={revenueGoal}
                         onChange={(e) => setRevenueGoal(Number(e.target.value))}
-                        className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white mt-1"
+                        className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
                         min="0"
                         max="50"
                       />
@@ -533,7 +544,7 @@ export default function Home() {
                       <textarea
                         value={strategyNotes}
                         onChange={(e) => setStrategyNotes(e.target.value)}
-                        className="w-full p-2 border border-cyan-300 rounded text-xs focus:border-cyan-500 focus:outline-none bg-white mt-1"
+                        className="w-full p-2 border border-cyan-300 rounded text-xs focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
                         rows="2"
                       />
                     </div>
@@ -564,7 +575,7 @@ export default function Home() {
                   <textarea
                     value={additionalContext}
                     onChange={(e) => setAdditionalContext(e.target.value)}
-                    className="w-full p-3 border-2 border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none resize-none text-sm"
+                    className="w-full p-3 border-2 border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none resize-none text-sm bg-white text-slate-800"
                     rows="2"
                     placeholder="Storm expected to reduce driver availability by 40%."
                   />
@@ -769,7 +780,7 @@ export default function Home() {
                     <div className="pt-4 border-t border-slate-200">
                       <h4 className="font-bold text-slate-800 mb-4">Contributing Factors:</h4>
                       <div className="space-y-3">
-                        {factors.map((factor, index) => (
+                        {(results.factors && results.factors.length > 0 ? results.factors : defaultFactors).map((factor, index) => (
                           <div key={index} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                             <div className={`w-2 h-2 ${factor.color} rounded-full mt-2 flex-shrink-0`}></div>
                             <div>

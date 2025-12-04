@@ -1,12 +1,14 @@
 """Pydantic models for recommendation API"""
-from typing import Dict
+from typing import Dict, List
 from pydantic import BaseModel, Field
 
 
 class RecommendationRequest(BaseModel):
     """Request model for pricing recommendation endpoint"""
-    zone: str = Field(..., description="Geographic zone (e.g., 'airport_corridor', 'downtown', 'suburbs')")
-    scenario: str = Field(..., description="Current scenario (e.g., 'normal', 'storm', 'road_closure', 'emergency')")
+    origin_zone: str = Field(..., description="Origin geographic zone (e.g., 'downtown', 'suburbs')")
+    destination_zone: str = Field(..., description="Destination geographic zone (e.g., 'airport_corridor', 'downtown')")
+    scenarios: List[str] = Field(..., description="List of applicable scenarios (e.g., ['storm', 'road_closure'])")
+    scenario: str = Field(..., description="Primary/selected scenario (e.g., 'storm', 'road_closure', 'emergency')")
     time: str = Field(..., description="ISO timestamp for the pricing request")
     loyalty_segment: str | None = Field(None, description="Customer loyalty tier (e.g., 'standard', 'gold', 'platinum')")
     notes: str | None = Field(None, description="Optional free-text notes about the scenario")
@@ -16,23 +18,35 @@ class RecommendationRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "zone": "airport_corridor",
-                "scenario": "road_closure",
-                "time": "2025-11-27T18:00:00Z",
+                "origin_zone": "downtown",
+                "destination_zone": "airport_corridor",
+                "scenarios": ["storm", "road_closure"],
+                "scenario": "storm",
+                "time": "2024-01-15T14:30:00.000Z",
                 "loyalty_segment": "gold",
-                "notes": "evening commute, partial freeway closure",
-                "corporate_revenue_goal": 0.15,
-                "corporate_strategy_notes": "End-of-quarter revenue push for airport corridor"
+                "notes": "Storm expected to reduce driver availability by 40%.",
+                "corporate_revenue_goal": 0.03,
+                "corporate_strategy_notes": "Q4 revenue push"
             }
         }
+
+
+class FactorReasoning(BaseModel):
+    """Structured reasoning summaries for individual factors"""
+    environment: str | None = Field(None, description="Agent's reasoning about environmental factors")
+    supply_demand: str | None = Field(None, description="Agent's reasoning about supply and demand factors")
+    loyalty: str | None = Field(None, description="Agent's reasoning about loyalty factors")
+    historical: str | None = Field(None, description="Agent's reasoning about historical patterns")
+    corporate_pressure: str | None = Field(None, description="Agent's reasoning about corporate pressure factors")
 
 
 class RecommendationResponse(BaseModel):
     """Response model for pricing recommendation endpoint"""
     recommended_adjustment: float = Field(..., description="Recommended price adjustment as a multiplier (e.g., 0.10 for +10%)")
     goodness: float = Field(..., description="Goodness score between 0.0 and 1.0")
-    factors: Dict[str, str] = Field(..., description="Summary of each factor's contribution")
-    reasoning: str = Field(..., description="Natural language explanation of the recommendation")
+    factors: Dict[str, str] = Field(..., description="Summary of each factor's contribution from tool outputs")
+    overall_reasoning: str = Field(..., description="Overall natural language explanation of the recommendation")
+    factor_reasoning: FactorReasoning = Field(..., description="Individual reasoning summaries for each factor from the agent")
 
     class Config:
         json_schema_extra = {
@@ -46,7 +60,14 @@ class RecommendationResponse(BaseModel):
                     "historical": "Similar airport evening trips succeed around 1.05x.",
                     "corporate_pressure": "Corporate target of +15% revenue nudges price upward within allowed guardrails."
                 },
-                "reasoning": "Based on current conditions, a +10% price adjustment is recommended..."
+                "overall_reasoning": "Based on current conditions, a +10% price adjustment is recommended. The combination of road closures, peak demand, and corporate revenue goals supports this pricing level while respecting loyalty discounts.",
+                "factor_reasoning": {
+                    "environment": "The road closure significantly impacts travel time and driver availability, justifying the 5% environmental adjustment.",
+                    "supply_demand": "Evening rush hour combined with airport destination creates high demand pressure, supporting the 15% surge.",
+                    "loyalty": "Gold tier members receive preferential pricing treatment, softening the overall surge impact.",
+                    "historical": "Historical data shows similar routes during evening hours have successfully accepted pricing at this level.",
+                    "corporate_pressure": "Corporate revenue goals provide upward pressure, but remain within ethical guardrails."
+                }
             }
         }
 
