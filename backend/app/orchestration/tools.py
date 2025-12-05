@@ -33,12 +33,14 @@ def calculate_pricing_outcome_tool(
     """
     
     # 1. Combine factors
+    # Note: This tool doesn't have access to enable_guardrails flag, defaults to True
     combination = combine_factors(
         environment_factor,
         supply_demand_factor,
         loyalty_factor,
         historical_factor,
-        corporate_pressure_factor
+        corporate_pressure_factor,
+        enable_guardrails=True  # Default for LangChain tool usage
     )
     
     raw_adjustment = combination["recommended_adjustment"]

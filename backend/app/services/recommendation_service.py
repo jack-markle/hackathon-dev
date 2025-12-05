@@ -551,7 +551,7 @@ def compute_historical_factor(req: RecommendationRequest) -> Dict[str, Any]:
     }
 
 
-def compute_corporate_pressure_factor(req: RecommendationRequest) -> Dict[str, Any]:
+def compute_corporate_pressure_factor(req: RecommendationRequest, enable_guardrails: bool = True) -> Dict[str, Any]:
     """
     Compute the influence of corporate revenue goals on pricing.
     
@@ -560,6 +560,9 @@ def compute_corporate_pressure_factor(req: RecommendationRequest) -> Dict[str, A
     
     Uses corporate_strategies.json if available to validate strategy notes and adjust factors.
     Returns a factor adjustment and summary.
+    
+    Args:
+        enable_guardrails: If False, applies full corporate goal without 8% cap
     """
     if req.corporate_revenue_goal is None:
         return {
@@ -598,20 +601,35 @@ def compute_corporate_pressure_factor(req: RecommendationRequest) -> Dict[str, A
             # Goal differs from typical - use provided goal but note it
             strategy_note += f" (Typical for this strategy: {typical_goal*100:.0f}%)"
     
-    # Cap corporate pressure influence at reasonable levels
+    # Cap corporate pressure influence at reasonable levels (only when guardrails enabled)
     # We don't let corporate pressure alone drive more than 8% adjustment
-    capped_influence = min(goal, 0.08)
+    if enable_guardrails:
+        capped_influence = min(goal, 0.08)
+    else:
+        capped_influence = goal  # Apply full goal when guardrails disabled
     
     if goal > 0.15:
-        return {
-            "factor": capped_influence,
-            "summary": f"High corporate revenue target ({goal*100:.0f}%) encourages pricing increase, but capped at +{capped_influence*100:.0f}% to maintain market competitiveness.{strategy_note}"
-        }
+        if enable_guardrails:
+            return {
+                "factor": capped_influence,
+                "summary": f"High corporate revenue target ({goal*100:.0f}%) encourages pricing increase, but capped at +{capped_influence*100:.0f}% to maintain market competitiveness.{strategy_note}"
+            }
+        else:
+            return {
+                "factor": capped_influence,
+                "summary": f"High corporate revenue target ({goal*100:.0f}%) applied fully (+{capped_influence*100:.0f}%) - guardrails disabled.{strategy_note}"
+            }
     elif goal > 0.08:
-        return {
-            "factor": capped_influence,
-            "summary": f"Moderate corporate revenue goal ({goal*100:.0f}%) nudges pricing upward (+{capped_influence*100:.0f}%).{strategy_note}"
-        }
+        if enable_guardrails:
+            return {
+                "factor": capped_influence,
+                "summary": f"Moderate corporate revenue goal ({goal*100:.0f}%) nudges pricing upward (+{capped_influence*100:.0f}%).{strategy_note}"
+            }
+        else:
+            return {
+                "factor": capped_influence,
+                "summary": f"Moderate corporate revenue goal ({goal*100:.0f}%) applied fully (+{capped_influence*100:.0f}%) - guardrails disabled.{strategy_note}"
+            }
     elif goal > 0.0:
         return {
             "factor": goal,
@@ -630,7 +648,8 @@ def apply_guardrails(
     base_adjustment: float,
     scenario: str,
     loyalty_segment: str | None,
-    factors: Dict[str, Dict[str, Any]]
+    factors: Dict[str, Dict[str, Any]],
+    enable_guardrails: bool = True
 ) -> Dict[str, Any]:
     """
     Apply ethical and market-based guardrails to the recommended adjustment.
@@ -641,8 +660,19 @@ def apply_guardrails(
     3. Corporate pressure: Cannot override emergency/ethics rules
     4. Maximum surge cap: Never exceed 2.0x (100% increase)
     
+    Args:
+        enable_guardrails: If False, returns raw adjustment without any guardrail modifications
+    
     Returns adjusted value and any flags/warnings.
     """
+    # If guardrails are disabled, return raw adjustment with no flags
+    if not enable_guardrails:
+        return {
+            "adjusted_value": base_adjustment,
+            "flags": [],
+            "guardrail_applied": "disabled"
+        }
+    
     scenario_lower = scenario.lower()
     adjusted = base_adjustment
     flags = []
@@ -704,7 +734,8 @@ def combine_factors(
     supply_demand: Dict[str, Any],
     loyalty: Dict[str, Any],
     historical: Dict[str, Any],
-    corporate_pressure: Dict[str, Any]
+    corporate_pressure: Dict[str, Any],
+    enable_guardrails: bool = True
 ) -> Dict[str, float]:
     """
     Combine individual factors into a single recommended adjustment and goodness score.
@@ -747,7 +778,8 @@ def combine_factors(
         env_factor,
         supply_demand_factor,
         loyalty_factor,
-        corp_factor
+        corp_factor,
+        enable_guardrails=enable_guardrails
     )
     
     return {
@@ -761,7 +793,8 @@ def calculate_goodness_score(
     env_factor: float,
     supply_demand_factor: float,
     loyalty_factor: float,
-    corp_factor: float
+    corp_factor: float,
+    enable_guardrails: bool = True
 ) -> float:
     """
     Calculate a 'goodness' score from 0.0 to 1.0.
@@ -780,8 +813,14 @@ def calculate_goodness_score(
     - Excessive surge (>30%)
     - High corporate pressure without market justification
     - Negative total adjustment (underpricing)
+    
+    Args:
+        enable_guardrails: If False, applies more aggressive penalties for high corporate pressure
     """
-    base_goodness = 0.80  # Start optimistic
+    if enable_guardrails:
+        base_goodness = 0.80  # Start optimistic
+    else:
+        base_goodness = 0.70  # Start lower when guardrails disabled (more cautious)
     
     # Penalty for excessive surge
     if adjustment > 0.30:
@@ -792,18 +831,32 @@ def calculate_goodness_score(
         base_goodness -= abs(adjustment) * 0.3
     
     # Bonus for moderate, justified pricing (10-20% range with market support)
-    if 0.10 <= adjustment <= 0.20:
+    # Only apply bonus when guardrails are enabled (ethical pricing is rewarded)
+    if enable_guardrails and 0.10 <= adjustment <= 0.20:
         market_justification = env_factor + supply_demand_factor
         if market_justification > 0.10:
             base_goodness += 0.10
     
-    # Penalty if corporate pressure is high but market doesn't support it
+    # Penalty for corporate pressure - more aggressive when guardrails disabled
     market_support = env_factor + supply_demand_factor
-    if corp_factor > 0.05 and market_support < 0.05:
-        base_goodness -= 0.15  # Corporate pushing without market justification
+    if enable_guardrails:
+        # Standard penalty: corporate pressure without market support
+        if corp_factor > 0.05 and market_support < 0.05:
+            base_goodness -= 0.15  # Corporate pushing without market justification
+    else:
+        # Aggressive penalty when guardrails disabled: penalize high corporate pressure more
+        if corp_factor > 0.10:  # High corporate pressure (>10%)
+            # Penalty increases with corporate pressure level
+            penalty = min(0.40, corp_factor * 2.0)  # Up to -40% penalty for very high pressure
+            base_goodness -= penalty
+            # Additional penalty if market doesn't support it
+            if market_support < 0.10:
+                base_goodness -= 0.20  # Extra penalty for pushing without market support
+        elif corp_factor > 0.05:
+            base_goodness -= 0.20  # Moderate corporate pressure still penalized
     
-    # Bonus for loyalty considerations
-    if loyalty_factor < 0.0:  # Negative = discount
+    # Bonus for loyalty considerations (only when guardrails enabled)
+    if enable_guardrails and loyalty_factor < 0.0:  # Negative = discount
         base_goodness += abs(loyalty_factor) * 0.5  # Rewarding loyal customers
     
     # Ensure goodness stays in [0.0, 1.0] range
@@ -828,11 +881,12 @@ def build_recommendation(req: RecommendationRequest) -> RecommendationResponse:
     Note: The 'reasoning' field will be a placeholder until Dev 2 integrates LangChain.
     """
     # Step 1: Compute all factors
+    enable_guardrails = req.enable_guardrails if req.enable_guardrails is not None else True
     env = compute_environment_factor(req)
     supply_demand = compute_supply_demand_factor(req)
     loyalty = compute_loyalty_factor(req)
     historical = compute_historical_factor(req)
-    corporate_pressure = compute_corporate_pressure_factor(req)
+    corporate_pressure = compute_corporate_pressure_factor(req, enable_guardrails=enable_guardrails)
     
     # Store factors for guardrail checking
     all_factors = {
@@ -844,23 +898,25 @@ def build_recommendation(req: RecommendationRequest) -> RecommendationResponse:
     }
     
     # Step 2: Combine factors
-    combination = combine_factors(env, supply_demand, loyalty, historical, corporate_pressure)
+    combination = combine_factors(env, supply_demand, loyalty, historical, corporate_pressure, enable_guardrails=enable_guardrails)
     raw_adjustment = combination["recommended_adjustment"]
     goodness = combination["goodness"]
     
-    # Step 3: Apply guardrails
+    # Step 3: Apply guardrails (if enabled)
+    enable_guardrails = req.enable_guardrails if req.enable_guardrails is not None else True
     guardrail_result = apply_guardrails(
         raw_adjustment,
         req.scenario,
         req.loyalty_segment,
-        all_factors
+        all_factors,
+        enable_guardrails=enable_guardrails
     )
     
     final_adjustment = guardrail_result["adjusted_value"]
     guardrail_flags = guardrail_result["flags"]
     
-    # If guardrails changed the value significantly, adjust goodness
-    if abs(final_adjustment - raw_adjustment) > 0.05:
+    # If guardrails changed the value significantly, adjust goodness (only when guardrails are enabled)
+    if enable_guardrails and abs(final_adjustment - raw_adjustment) > 0.05:
         # Guardrails kicked in - this might affect goodness
         if guardrail_result["guardrail_applied"] == "emergency":
             goodness = max(goodness, 0.85)  # Ethical pricing is good

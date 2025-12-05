@@ -20,6 +20,7 @@ class RecommendationRequest(BaseModel):
     historical_cost_of_ride: float | None = Field(None, ge=0.0, description="Historical cost for similar rides")
     vehicle_type: str | None = Field(None, pattern="^(Premium|Economy)$", description="Vehicle type requested (Premium or Economy)")
     expected_ride_duration: int | None = Field(None, ge=0, description="Expected ride duration in minutes")
+    enable_guardrails: bool | None = Field(True, description="Enable ethical and market-based guardrails (default: True). Set to False to see raw recommendations without guardrail adjustments.")
 
     class Config:
         json_schema_extra = {

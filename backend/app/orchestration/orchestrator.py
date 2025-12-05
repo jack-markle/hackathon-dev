@@ -40,11 +40,12 @@ async def orchestrate_pricing_recommendation(
     
     # --- STEP 1: Deterministic Calculation (Fast) ---
     # Run all factor computations
+    enable_guardrails = req.enable_guardrails if req.enable_guardrails is not None else True
     env = compute_environment_factor(req)
     supply = compute_supply_demand_factor(req)
     loyalty = compute_loyalty_factor(req)
     historical = compute_historical_factor(req)
-    corp = compute_corporate_pressure_factor(req)
+    corp = compute_corporate_pressure_factor(req, enable_guardrails=enable_guardrails)
     
     all_factors = {
         "environment": env,
@@ -55,23 +56,25 @@ async def orchestrate_pricing_recommendation(
     }
 
     # Calculate initial mix
-    combination = combine_factors(env, supply, loyalty, historical, corp)
+    combination = combine_factors(env, supply, loyalty, historical, corp, enable_guardrails=enable_guardrails)
     raw_adjustment = combination["recommended_adjustment"]
     goodness = combination["goodness"]
 
-    # Apply Guardrails
+    # Apply Guardrails (if enabled)
+    enable_guardrails = req.enable_guardrails if req.enable_guardrails is not None else True
     guardrail_result = apply_guardrails(
         raw_adjustment,
         req.scenario,
         req.loyalty_segment,
-        all_factors
+        all_factors,
+        enable_guardrails=enable_guardrails
     )
     
     final_adjustment = guardrail_result["adjusted_value"]
     guardrail_flags = guardrail_result["flags"]
 
-    # Adjust goodness if guardrails were active
-    if abs(final_adjustment - raw_adjustment) > 0.05:
+    # Adjust goodness if guardrails were active (only when guardrails are enabled)
+    if enable_guardrails and abs(final_adjustment - raw_adjustment) > 0.05:
         if guardrail_result["guardrail_applied"] == "emergency":
             goodness = max(goodness, 0.85)
         elif guardrail_flags:
@@ -150,6 +153,11 @@ OVERALL_REASONING: [3-4 sentences summarizing the recommendation, mentioning key
     # --- STEP 3: Return Response ---
     
     # Send alert (non-blocking)
+    logger.info(
+        f"[N8N] Preparing to send pricing alert - "
+        f"Goodness: {goodness:.2f}, Flags: {len(guardrail_flags)}, "
+        f"Adjustment: {final_adjustment:.2f}"
+    )
     await send_pricing_alert(
         req=req,
         adjustment=round(final_adjustment, 2),

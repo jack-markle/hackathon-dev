@@ -75,6 +75,7 @@ export default function Home() {
   const [historicalCost, setHistoricalCost] = useState('');
   const [vehicleType, setVehicleType] = useState('');
   const [expectedDuration, setExpectedDuration] = useState('');
+  const [enableGuardrails, setEnableGuardrails] = useState(true);
   
   // Use DOM refs to directly access input elements at submission time
   const revenueGoalInputRef = useRef(null);
@@ -174,6 +175,9 @@ export default function Home() {
     if (expectedDuration !== '' && expectedDuration !== null) {
       payload.expected_ride_duration = parseInt(expectedDuration, 10);
     }
+    
+    // Add guardrails toggle
+    payload.enable_guardrails = enableGuardrails;
 
     // Log payload for debugging
     console.log('Payload:', payload);
@@ -694,6 +698,39 @@ export default function Home() {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Guardrails Toggle */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-purple-800 text-sm flex items-center gap-2 mb-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                        Ethical Guardrails
+                      </h3>
+                      <p className="text-xs text-purple-700">
+                        {enableGuardrails 
+                          ? "Guardrails are ON - Ethical limits and surge caps are applied"
+                          : "Guardrails are OFF - Raw recommendations without ethical limits (may trigger low goodness alerts)"}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer ml-4">
+                      <input
+                        type="checkbox"
+                        checked={enableGuardrails}
+                        onChange={(e) => setEnableGuardrails(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-purple-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                  {!enableGuardrails && (
+                    <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                      ⚠️ Warning: With guardrails disabled, you may see very low goodness scores and extreme pricing adjustments that would normally be blocked.
+                    </div>
+                  )}
                 </div>
 
                 {/* Analyst Notes */}
