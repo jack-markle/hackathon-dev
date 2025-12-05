@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 const zones = {
   downtown: { label: 'Downtown Core', price: 18.50, icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
@@ -69,6 +69,17 @@ export default function Home() {
   const [strategyNotes, setStrategyNotes] = useState('Q4 revenue push');
   const [additionalContext, setAdditionalContext] = useState('Storm expected to reduce driver availability by 40%.');
   const [isLoading, setIsLoading] = useState(false);
+  // New fields from gap analysis
+  const [numberOfRiders, setNumberOfRiders] = useState('');
+  const [numberOfDrivers, setNumberOfDrivers] = useState('');
+  const [historicalCost, setHistoricalCost] = useState('');
+  const [vehicleType, setVehicleType] = useState('');
+  const [expectedDuration, setExpectedDuration] = useState('');
+  const [enableGuardrails, setEnableGuardrails] = useState(true);
+  
+  // Use DOM refs to directly access input elements at submission time
+  const revenueGoalInputRef = useRef(null);
+  const strategyNotesInputRef = useRef(null);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [showZoneHint, setShowZoneHint] = useState(false);
@@ -113,6 +124,20 @@ export default function Home() {
   };
 
   const generateRecommendation = async () => {
+    // Read current values directly from DOM inputs first (before any state updates)
+    // This ensures we get the latest values even if React state hasn't updated yet
+    const currentRevenueGoal = revenueGoalInputRef.current ? Number(revenueGoalInputRef.current.value) || 0 : revenueGoal;
+    const currentStrategyNotes = strategyNotesInputRef.current ? strategyNotesInputRef.current.value : strategyNotes;
+    
+    // Sync React state with DOM values to ensure form fields persist after submission
+    // Use a small delay to avoid state update conflicts
+    if (currentRevenueGoal !== revenueGoal) {
+      setRevenueGoal(currentRevenueGoal);
+    }
+    if (currentStrategyNotes !== strategyNotes) {
+      setStrategyNotes(currentStrategyNotes);
+    }
+    
     setIsLoading(true);
     setResults(null);
     setError(null);
@@ -130,9 +155,29 @@ export default function Home() {
       time: time,
       loyalty_segment: loyaltySegment,
       notes: additionalContext,
-      corporate_revenue_goal: revenueGoal / 100, // Convert percentage to decimal (3% -> 0.03)
-      corporate_strategy_notes: strategyNotes
+      corporate_revenue_goal: currentRevenueGoal / 100, // Convert percentage to decimal (3% -> 0.03)
+      corporate_strategy_notes: currentStrategyNotes
     };
+    
+    // Add new optional fields if provided
+    if (numberOfRiders !== '' && numberOfRiders !== null) {
+      payload.number_of_riders = parseInt(numberOfRiders, 10);
+    }
+    if (numberOfDrivers !== '' && numberOfDrivers !== null) {
+      payload.number_of_drivers = parseInt(numberOfDrivers, 10);
+    }
+    if (historicalCost !== '' && historicalCost !== null) {
+      payload.historical_cost_of_ride = parseFloat(historicalCost);
+    }
+    if (vehicleType !== '' && vehicleType !== null) {
+      payload.vehicle_type = vehicleType;
+    }
+    if (expectedDuration !== '' && expectedDuration !== null) {
+      payload.expected_ride_duration = parseInt(expectedDuration, 10);
+    }
+    
+    // Add guardrails toggle
+    payload.enable_guardrails = enableGuardrails;
 
     // Log payload for debugging
     console.log('Payload:', payload);
@@ -475,6 +520,103 @@ export default function Home() {
                   </p>
                 </div>
 
+                {/* Supply & Demand Data Section */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                  <h3 className="font-bold text-blue-800 text-sm flex items-center gap-2">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    Supply & Demand Data (Optional)
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-blue-800">
+                        Number of Riders
+                      </label>
+                      <input
+                        type="number"
+                        value={numberOfRiders}
+                        onChange={(e) => setNumberOfRiders(e.target.value)}
+                        className="w-full p-2 border border-blue-300 rounded text-sm focus:border-blue-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        min="0"
+                        placeholder="e.g., 90"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-blue-800">
+                        Number of Drivers
+                      </label>
+                      <input
+                        type="number"
+                        value={numberOfDrivers}
+                        onChange={(e) => setNumberOfDrivers(e.target.value)}
+                        className="w-full p-2 border border-blue-300 rounded text-sm focus:border-blue-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        min="0"
+                        placeholder="e.g., 45"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-600 italic">
+                    Provide real-time supply/demand data for more accurate pricing recommendations.
+                  </p>
+                </div>
+
+                {/* Trip Details Section */}
+                <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4 space-y-3">
+                  <h3 className="font-bold text-cyan-800 text-sm flex items-center gap-2">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Trip Details (Optional)
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-cyan-800">
+                        Vehicle Type
+                      </label>
+                      <select
+                        value={vehicleType}
+                        onChange={(e) => setVehicleType(e.target.value)}
+                        className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
+                      >
+                        <option value="">Select...</option>
+                        <option value="Economy">Economy</option>
+                        <option value="Premium">Premium</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-cyan-800">
+                        Expected Duration (min)
+                      </label>
+                      <input
+                        type="number"
+                        value={expectedDuration}
+                        onChange={(e) => setExpectedDuration(e.target.value)}
+                        className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
+                        min="0"
+                        placeholder="e.g., 90"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-cyan-800">
+                      Historical Cost ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={historicalCost}
+                      onChange={(e) => setHistoricalCost(e.target.value)}
+                      className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
+                      min="0"
+                      step="0.01"
+                      placeholder="e.g., 284.26"
+                    />
+                  </div>
+                  <p className="text-xs text-cyan-700 italic">
+                    Provide trip-specific details to refine pricing recommendations.
+                  </p>
+                </div>
+
                 {/* Current Price Display */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-bold text-blue-800 text-sm flex items-center gap-2 mb-2">
@@ -529,9 +671,13 @@ export default function Home() {
                         Revenue Goal (%)
                       </label>
                       <input
+                        ref={revenueGoalInputRef}
                         type="number"
                         value={revenueGoal}
-                        onChange={(e) => setRevenueGoal(Number(e.target.value))}
+                        onChange={(e) => {
+                          const value = Number(e.target.value) || 0;
+                          setRevenueGoal(value);
+                        }}
                         className="w-full p-2 border border-cyan-300 rounded text-sm focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
                         min="0"
                         max="50"
@@ -542,13 +688,49 @@ export default function Home() {
                         Strategy Notes
                       </label>
                       <textarea
+                        ref={strategyNotesInputRef}
                         value={strategyNotes}
-                        onChange={(e) => setStrategyNotes(e.target.value)}
+                        onChange={(e) => {
+                          setStrategyNotes(e.target.value);
+                        }}
                         className="w-full p-2 border border-cyan-300 rounded text-xs focus:border-cyan-500 focus:outline-none bg-white text-slate-800 mt-1"
                         rows="2"
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Guardrails Toggle */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-purple-800 text-sm flex items-center gap-2 mb-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                        Ethical Guardrails
+                      </h3>
+                      <p className="text-xs text-purple-700">
+                        {enableGuardrails 
+                          ? "Guardrails are ON - Ethical limits and surge caps are applied"
+                          : "Guardrails are OFF - Raw recommendations without ethical limits (may trigger low goodness alerts)"}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer ml-4">
+                      <input
+                        type="checkbox"
+                        checked={enableGuardrails}
+                        onChange={(e) => setEnableGuardrails(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-purple-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                  {!enableGuardrails && (
+                    <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                      ⚠️ Warning: With guardrails disabled, you may see very low goodness scores and extreme pricing adjustments that would normally be blocked.
+                    </div>
+                  )}
                 </div>
 
                 {/* Analyst Notes */}

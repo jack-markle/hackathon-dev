@@ -1,284 +1,163 @@
 """
 Main orchestrator for pricing recommendations.
-Integrates conceptual agents and LangChain reasoning.
+OPTIMIZED: Uses Code-First Orchestration instead of Agent Loop.
+1. Calculates all factors deterministically (Python).
+2. Uses LLM only for the final reasoning/explanation step.
 """
-import json
 import re
 import logging
 from typing import Dict, Any
+
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+
 from app.models.recommendation import RecommendationRequest, RecommendationResponse, FactorReasoning
 from app.core.config import settings
-from app.orchestration.orchestrator_agent import build_orchestrator_agent
 from app.integrations.n8n_notifier import send_pricing_alert
+
+# Import the deterministic service logic directly
+from app.services.recommendation_service import (
+    compute_environment_factor,
+    compute_supply_demand_factor,
+    compute_loyalty_factor,
+    compute_historical_factor,
+    compute_corporate_pressure_factor,
+    combine_factors,
+    apply_guardrails
+)
+
+logger = logging.getLogger(__name__)
 
 async def orchestrate_pricing_recommendation(
     req: RecommendationRequest,
 ) -> RecommendationResponse:
     """
-    High-level orchestration for pricing recommendation using LangChain Agent.
-    
-    1. Initializes the Orchestrator Agent.
-    2. Invokes the agent with the request details.
-    3. Extracts structured data (factors, adjustment, goodness) from tool outputs.
-    4. Uses the agent's final text response as the reasoning.
-    5. Returns complete response.
+    Optimized orchestration:
+    1. Compute all factors immediately (Python).
+    2. Apply guardrails and calculations (Python).
+    3. Send data to LLM to generate the explanation (Reasoning).
     """
-    # 1. Initialize Agent
-    agent_executor = build_orchestrator_agent(
-        model_name=settings.llm_model,
+    
+    # --- STEP 1: Deterministic Calculation (Fast) ---
+    # Run all factor computations
+    enable_guardrails = req.enable_guardrails if req.enable_guardrails is not None else True
+    env = compute_environment_factor(req)
+    supply = compute_supply_demand_factor(req)
+    loyalty = compute_loyalty_factor(req)
+    historical = compute_historical_factor(req)
+    corp = compute_corporate_pressure_factor(req, enable_guardrails=enable_guardrails)
+    
+    all_factors = {
+        "environment": env,
+        "supply_demand": supply,
+        "loyalty": loyalty,
+        "historical": historical,
+        "corporate_pressure": corp
+    }
+
+    # Calculate initial mix
+    combination = combine_factors(env, supply, loyalty, historical, corp, enable_guardrails=enable_guardrails)
+    raw_adjustment = combination["recommended_adjustment"]
+    goodness = combination["goodness"]
+
+    # Apply Guardrails (if enabled)
+    enable_guardrails = req.enable_guardrails if req.enable_guardrails is not None else True
+    guardrail_result = apply_guardrails(
+        raw_adjustment,
+        req.scenario,
+        req.loyalty_segment,
+        all_factors,
+        enable_guardrails=enable_guardrails
+    )
+    
+    final_adjustment = guardrail_result["adjusted_value"]
+    guardrail_flags = guardrail_result["flags"]
+
+    # Adjust goodness if guardrails were active (only when guardrails are enabled)
+    if enable_guardrails and abs(final_adjustment - raw_adjustment) > 0.05:
+        if guardrail_result["guardrail_applied"] == "emergency":
+            goodness = max(goodness, 0.85)
+        elif guardrail_flags:
+            goodness = max(0.60, goodness - 0.10)
+
+    # Prepare factor summaries for response
+    factor_summaries = {k: v["summary"] for k, v in all_factors.items()}
+    if guardrail_flags:
+        factor_summaries["guardrails"] = " | ".join(guardrail_flags)
+
+
+    # --- STEP 2: LLM Reasoning Generation ---
+    
+    # Construct prompt with the pre-calculated data
+    system_prompt = """You are a Pricing Advisor for a ride-hailing platform.
+Your goal is to explain a pre-calculated pricing recommendation to a Business Analyst.
+Your tone should be professional, objective, and clear.
+
+DATA PROVIDED:
+- Request: {request_json}
+- Calculated Factors: {factors_json}
+- Final Adjustment: {adjustment:.2f}
+- Goodness Score: {goodness:.2f}
+- Guardrails Triggered: {guardrails}
+
+TASK:
+Provide reasoning for each factor and an overall summary.
+You MUST use the following format EXACTLY:
+
+ENVIRONMENT_REASONING: [1-2 sentences explaining the environment impact based on the data]
+SUPPLY_DEMAND_REASONING: [1-2 sentences explaining supply/demand impact]
+LOYALTY_REASONING: [1-2 sentences explaining loyalty impact]
+HISTORICAL_REASONING: [1-2 sentences explaining historical context]
+CORPORATE_PRESSURE_REASONING: [1-2 sentences explaining corporate goals impact]
+OVERALL_REASONING: [3-4 sentences summarizing the recommendation, mentioning key drivers and any guardrails/tensions]
+"""
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+    ])
+
+    llm = ChatOpenAI(
+        model=settings.llm_model,
         temperature=settings.llm_temperature,
         api_key=settings.openai_api_key
     )
 
-    # 2. Invoke Agent
-    # We pass the request as a JSON string in the input
-    req_dict = req.model_dump()
-    # Ensure datetime is serializable
-    input_text = f"Please generate a pricing recommendation for this request: {json.dumps(req_dict, default=str)}"
-    
+    chain = prompt | llm
+
+    # Format inputs for the prompt
+    import json
+    chain_input = {
+        "request_json": json.dumps(req.model_dump(), default=str),
+        "factors_json": json.dumps(factor_summaries, indent=2),
+        "adjustment": final_adjustment,
+        "goodness": goodness,
+        "guardrails": str(guardrail_flags) if guardrail_flags else "None"
+    }
+
     try:
-        result = await agent_executor.ainvoke({"input": input_text})
+        # Invoke LLM - Single call!
+        result_msg = await chain.ainvoke(chain_input)
+        output_text = result_msg.content
+        
+        # Parse the output (Reuse existing regex logic or similar)
+        factor_reasoning = parse_llm_reasoning(output_text)
+        overall_reasoning = extract_overall_reasoning(output_text)
+
     except Exception as e:
-        # Log error for debugging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Agent execution failed: {e}", exc_info=True)
-        
-        # Return a fallback response with basic factor calculations
-        # This ensures the API doesn't crash during demo
-        from app.services.recommendation_service import build_recommendation
-        fallback_response = build_recommendation(req)
-        fallback_response.overall_reasoning = (
-            f"AI reasoning temporarily unavailable. "
-            f"Recommendation based on factor analysis: {fallback_response.overall_reasoning}"
-        )
-        
-        # Attempt to send alert even in fallback mode
-        try:
-            flags = []
-            if "guardrails" in fallback_response.factors:
-                flags = fallback_response.factors["guardrails"].split(" | ")
-            
-            await send_pricing_alert(
-                req=req,
-                adjustment=fallback_response.recommended_adjustment,
-                goodness=fallback_response.goodness,
-                flags=flags
-            )
-        except Exception:
-            pass # Don't let alert failure block response
-            
-        return fallback_response
-    
-    # 3. Extract data from intermediate steps
-    # AgentExecutor returns intermediate_steps as a list of (AgentAction, observation) tuples
-    intermediate_steps = result.get("intermediate_steps", [])
-    
-    # Containers for extracted data
-    factor_summaries = {}
-    factor_reasoning = {}  # Agent's reasoning about each factor
-    final_adjustment = 0.0
-    goodness = 0.0
-    guardrail_flags = []
-    
-    tool_map = {
-        "environment_tool": "environment",
-        "supply_demand_tool": "supply_demand",
-        "loyalty_tool": "loyalty",
-        "historical_tool": "historical",
-        "corporate_pressure_tool": "corporate_pressure"
-    }
-    
-    # Extract messages to find reasoning between tool calls
-    messages = result.get("messages", [])
-    current_tool = None
-    
-    for action, observation in intermediate_steps:
-        # Extract tool name from AgentAction
-        tool_name = action.tool if hasattr(action, 'tool') else str(action)
-        
-        # Parse observation if it's a string (JSON)
-        if isinstance(observation, str):
-            try:
-                observation = json.loads(observation)
-            except:
-                pass
-        
-        # Extract factor summaries from tool outputs
-        if tool_name in tool_map:
-            key = tool_map[tool_name]
-            current_tool = key
-            if isinstance(observation, dict) and "summary" in observation:
-                factor_summaries[key] = observation["summary"]
-        
-        # Extract calculation results
-        if tool_name == "calculate_pricing_outcome_tool":
-            if isinstance(observation, dict):
-                final_adjustment = observation.get("final_adjustment", 0.0)
-                goodness = observation.get("goodness", 0.0)
-                guardrail_flags = observation.get("guardrail_flags", [])
-    
-    # Extract reasoning summaries from agent messages
-    # Look for structured reasoning markers in messages
-    reasoning_markers = {
-        "ENVIRONMENT_REASONING": "environment",
-        "SUPPLY_DEMAND_REASONING": "supply_demand",
-        "LOYALTY_REASONING": "loyalty",
-        "HISTORICAL_REASONING": "historical",
-        "CORPORATE_PRESSURE_REASONING": "corporate_pressure"
-    }
-    
-    # Helper function to extract reasoning from text
-    def extract_reasoning_from_text(text: str, markers: dict, existing_reasoning: dict) -> dict:
-        """Extract factor reasoning from text using markers."""
-        # Check for each marker (case-insensitive)
-        for marker, key in markers.items():
-            if key in existing_reasoning:
-                continue  # Already extracted
-            
-            # Try both uppercase and original case
-            marker_variants = [marker, marker.upper(), marker.lower()]
-            for marker_variant in marker_variants:
-                if marker_variant + ":" in text.upper():
-                    # Find the marker in the text (case-insensitive)
-                    pattern = re.compile(re.escape(marker_variant) + ":", re.IGNORECASE)
-                    match = pattern.search(text)
-                    if match:
-                        # Extract text after the marker
-                        start_pos = match.end()
-                        reasoning_text = text[start_pos:].strip()
-                        
-                        # Find the next marker or end of text
-                        next_marker_pos = len(reasoning_text)
-                        for other_marker, _ in markers.items():
-                            if other_marker != marker:
-                                other_pattern = re.compile(re.escape(other_marker) + ":", re.IGNORECASE)
-                                other_match = other_pattern.search(reasoning_text)
-                                if other_match and other_match.start() < next_marker_pos:
-                                    next_marker_pos = other_match.start()
-                        
-                        # Also check for OVERALL_REASONING marker
-                        overall_match = re.compile(r"OVERALL_REASONING:", re.IGNORECASE).search(reasoning_text)
-                        if overall_match and overall_match.start() < next_marker_pos:
-                            next_marker_pos = overall_match.start()
-                        
-                        reasoning_text = reasoning_text[:next_marker_pos].strip()
-                        
-                        # Clean up - take first 2 sentences or 300 chars
-                        sentences = re.split(r'[.!?]+', reasoning_text)
-                        if len(sentences) > 2:
-                            reasoning_text = ". ".join(sentences[:2]).strip()
-                            if reasoning_text and not reasoning_text.endswith('.'):
-                                reasoning_text += "."
-                        else:
-                            reasoning_text = reasoning_text[:300].strip()
-                        
-                        if reasoning_text and len(reasoning_text) > 10:
-                            existing_reasoning[key] = reasoning_text
-                            break  # Found it, move to next marker
-        return existing_reasoning
-    
-    # First, try to extract from individual messages
-    last_tool_key = None
-    for i, msg in enumerate(messages):
-        if not hasattr(msg, 'content') or not msg.content:
-            continue
-        
-        content = msg.content if isinstance(msg.content, str) else str(msg.content)
-        if not content or len(content) < 10:  # Skip empty or very short content
-            continue
+        logger.error(f"LLM generation failed: {e}", exc_info=True)
+        # Fallback if LLM fails
+        factor_reasoning = FactorReasoning()
+        overall_reasoning = "Automated calculation (LLM unavailable). " + \
+                            f"Adjustment: {final_adjustment:.2f}, Goodness: {goodness:.2f}"
 
-        # Look for structured reasoning markers
-        factor_reasoning = extract_reasoning_from_text(content, reasoning_markers, factor_reasoning)
+    # --- STEP 3: Return Response ---
     
-    # Also check the final output string for reasoning markers (they might be there)
-    output_text = result.get("output", "")
-    if output_text:
-        factor_reasoning = extract_reasoning_from_text(output_text, reasoning_markers, factor_reasoning)
-    
-    # If we didn't get individual reasoning, try to parse from the overall reasoning
-    # Look for factor mentions in the overall reasoning
-    if not any(factor_reasoning.values()):
-        overall_reasoning_text = result.get("output", "")
-        if overall_reasoning_text:
-            # Extract text after "REASONING:" if present
-            if "REASONING:" in overall_reasoning_text.upper():
-                parts = overall_reasoning_text.split("REASONING:", 1)
-                if len(parts) > 1:
-                    reasoning_section = parts[1]
-                    # Remove "OVERALL_REASONING:" if present
-                    if "OVERALL_REASONING:" in reasoning_section.upper():
-                        reasoning_section = reasoning_section.upper().split("OVERALL_REASONING:", 1)[-1]
-                    overall_reasoning_text = reasoning_section
-            
-            # Try to extract factor-specific reasoning from the combined text
-            # Look for explicit factor mentions
-            factor_patterns = {
-                "environment": [r"environmental factor", r"environment", r"weather", r"storm.*adjustment"],
-                "supply_demand": [r"supply.*demand", r"supply-demand", r"driver availability", r"off-peak"],
-                "loyalty": [r"loyalty factor", r"loyalty", r"gold member", r"platinum", r"discount"],
-                "historical": [r"historical data", r"historical", r"similar.*events", r"typically"],
-                "corporate_pressure": [r"corporate pressure", r"corporate", r"revenue.*q4", r"revenue goals"]
-            }
-            
-            # Split by sentences
-            sentences = re.split(r'[.!?]+', overall_reasoning_text)
-            
-            for sentence in sentences:
-                sentence = sentence.strip()
-                if not sentence or len(sentence) < 10:
-                    continue
-                    
-                sentence_upper = sentence.upper()
-                for factor_key, patterns in factor_patterns.items():
-                    if factor_key not in factor_reasoning:
-                        for pattern in patterns:
-                            if re.search(pattern, sentence_upper, re.IGNORECASE):
-                                # Found a sentence related to this factor
-                                if len(sentence) > 15 and len(sentence) < 300:
-                                    factor_reasoning[factor_key] = sentence.strip()
-                                    break
-                        if factor_key in factor_reasoning:
-                            break
-
-    # Add guardrails to summaries if present
-    if guardrail_flags:
-        factor_summaries["guardrails"] = " | ".join(guardrail_flags)
-
-    # 4. Get Overall Reasoning from output
-    overall_reasoning = result.get("output", "No reasoning generated.")
-    
-    # Clean up overall reasoning - remove individual factor reasoning markers if present
-    if "OVERALL_REASONING:" in overall_reasoning.upper():
-        parts = overall_reasoning.upper().split("OVERALL_REASONING:", 1)
-        if len(parts) > 1:
-            overall_reasoning = parts[1].strip()
-    
-    # Remove individual reasoning markers from overall reasoning
-    for marker in ["ENVIRONMENT_REASONING", "SUPPLY_DEMAND_REASONING", "LOYALTY_REASONING", 
-                   "HISTORICAL_REASONING", "CORPORATE_PRESSURE_REASONING", "REASONING:"]:
-        if marker in overall_reasoning.upper():
-            # Remove everything before the last occurrence of OVERALL_REASONING or keep everything after REASONING:
-            if marker == "REASONING:" and "OVERALL_REASONING" not in overall_reasoning.upper():
-                # If it's just "REASONING:", take everything after it
-                parts = overall_reasoning.upper().split("REASONING:", 1)
-                if len(parts) > 1:
-                    overall_reasoning = parts[1].strip()
-            else:
-                # Remove the marker and everything before it if OVERALL_REASONING exists
-                if "OVERALL_REASONING:" in overall_reasoning.upper():
-                    overall_reasoning = overall_reasoning.upper().split("OVERALL_REASONING:", 1)[1].strip()
-    
-    # 5. Create structured factor reasoning object
-    factor_reasoning_obj = FactorReasoning(
-        environment=factor_reasoning.get("environment"),
-        supply_demand=factor_reasoning.get("supply_demand"),
-        loyalty=factor_reasoning.get("loyalty"),
-        historical=factor_reasoning.get("historical"),
-        corporate_pressure=factor_reasoning.get("corporate_pressure")
+    # Send alert (non-blocking)
+    logger.info(
+        f"[N8N] Preparing to send pricing alert - "
+        f"Goodness: {goodness:.2f}, Flags: {len(guardrail_flags)}, "
+        f"Adjustment: {final_adjustment:.2f}"
     )
-
-    # 6. Return complete response
-    # Send alert to n8n (fire and forget / non-blocking ideally, but await here is fine for now)
     await send_pricing_alert(
         req=req,
         adjustment=round(final_adjustment, 2),
@@ -291,5 +170,36 @@ async def orchestrate_pricing_recommendation(
         goodness=round(goodness, 2),
         factors=factor_summaries,
         overall_reasoning=overall_reasoning,
-        factor_reasoning=factor_reasoning_obj
+        factor_reasoning=factor_reasoning
     )
+
+# --- Helpers for Parsing ---
+
+def parse_llm_reasoning(text: str) -> FactorReasoning:
+    """Extracts structured reasoning from LLM output text."""
+    reasoning = {}
+    markers = {
+        "ENVIRONMENT_REASONING": "environment",
+        "SUPPLY_DEMAND_REASONING": "supply_demand",
+        "LOYALTY_REASONING": "loyalty",
+        "HISTORICAL_REASONING": "historical",
+        "CORPORATE_PRESSURE_REASONING": "corporate_pressure"
+    }
+    
+    for marker, key in markers.items():
+        # Regex to capture text between this marker and the next marker (or end of string)
+        # format: MARKER: ... text ... (next marker or end)
+        pattern = re.compile(f"{marker}:(.*?)(?=(?:[A-Z_]+_REASONING:)|$)", re.DOTALL)
+        match = pattern.search(text)
+        if match:
+            reasoning[key] = match.group(1).strip()
+            
+    return FactorReasoning(**reasoning)
+
+def extract_overall_reasoning(text: str) -> str:
+    """Extracts the overall reasoning section."""
+    pattern = re.compile(r"OVERALL_REASONING:(.*)", re.DOTALL)
+    match = pattern.search(text)
+    if match:
+        return match.group(1).strip()
+    return text[:200] # Fallback if format broke
