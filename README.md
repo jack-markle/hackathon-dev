@@ -4,6 +4,10 @@
 
 Hackathon Team 4 Demo Video: https://www.youtube.com/watch?v=zpY9j4uK6q8
 
+## Slide Deck Link
+
+Team 4 - Rideflow AI Pricing Analyst and Monitor Presenation: https://docs.google.com/presentation/d/1BYwBPKA0QtSjFNpcnJLaB-CQvmYURwmclkc3-P67tQk/edit?usp=sharing
+
 ## Architecture Diagram
 
 The architecture diagram for our project can be viewed via `architecture.png`.
